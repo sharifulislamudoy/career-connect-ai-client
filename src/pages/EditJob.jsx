@@ -12,9 +12,14 @@ import {
   FaUsers,
   FaFileAlt,
   FaCheck,
-  FaRegBuilding
+  FaRegBuilding,
+  FaUpload,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
+
+const cloudName = 'dohhfubsa';
+const uploadPreset = 'react_unsigned';
 
 const EditJob = () => {
   const { id } = useParams();
@@ -22,8 +27,9 @@ const EditJob = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLicense, setUploadingLicense] = useState(false);
   const [success, setSuccess] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     title: '',
     company: '',
@@ -37,7 +43,8 @@ const EditJob = () => {
     applicationDeadline: '',
     contactEmail: '',
     website: '',
-    status: 'active'
+    status: 'active',
+    licenseImage: ''
   });
 
   useEffect(() => {
@@ -49,7 +56,7 @@ const EditJob = () => {
       setLoading(true);
       const response = await fetch(`http://localhost:5000/api/jobs/edit/${id}?recruiterId=${user.uid}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setFormData(data.job);
       } else {
@@ -73,10 +80,38 @@ const EditJob = () => {
     }));
   };
 
+  const handleLicenseUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingLicense(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        setFormData(prev => ({ ...prev, licenseImage: data.secure_url }));
+      } else {
+        alert('Upload failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploadingLicense(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    
+
     try {
       const jobData = {
         ...formData,
@@ -181,7 +216,7 @@ const EditJob = () => {
               <h3 className="text-xl font-semibold text-gray-900 border-b pb-3">
                 Basic Information
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -347,6 +382,53 @@ const EditJob = () => {
               </div>
             </div>
 
+            {/* Company License Upload (Optional) */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-gray-900 border-b pb-3">
+                Company Verification (Optional)
+              </h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-sm text-blue-800 mb-3">
+                  Upload a company license or registration document to verify your company.
+                  Verified jobs will display a blue verification badge.
+                </p>
+                <div className="flex items-center space-x-4">
+                  <label className="cursor-pointer bg-white border border-gray-300 rounded-xl px-4 py-2 hover:bg-gray-50 transition-colors">
+                    <FaUpload className="inline mr-2" />
+                    Choose File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLicenseUpload}
+                      className="hidden"
+                      disabled={uploadingLicense}
+                    />
+                  </label>
+                  {uploadingLicense && (
+                    <div className="flex items-center text-gray-600">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Uploading...
+                    </div>
+                  )}
+                  {formData.licenseImage && !uploadingLicense && (
+                    <div className="flex items-center text-green-600">
+                      <FaCheckCircle className="mr-2" />
+                      License uploaded
+                    </div>
+                  )}
+                </div>
+                {formData.licenseImage && (
+                  <div className="mt-3">
+                    <img
+                      src={formData.licenseImage}
+                      alt="License preview"
+                      className="max-h-32 rounded-lg border border-gray-200"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Job Description */}
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-gray-900 border-b pb-3">
@@ -421,7 +503,7 @@ const EditJob = () => {
               </button>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploadingLicense}
                 className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? (

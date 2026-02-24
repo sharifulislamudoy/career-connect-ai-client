@@ -12,7 +12,8 @@ import {
   FaExternalLinkAlt,
   FaCalendarAlt,
   FaUsers,
-  FaRegBuilding
+  FaRegBuilding,
+  FaCheckCircle // add verified icon
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -227,6 +228,10 @@ const Jobs = () => {
                         <div className="flex items-center text-gray-600 text-sm mb-2">
                           <FaRegBuilding className="mr-2" />
                           <span>{job.company}</span>
+                          {/* Verified Badge */}
+                          {job.isVerified && (
+                            <FaCheckCircle className="ml-2 text-blue-500" title="Verified Company" />
+                          )}
                         </div>
                       </div>
                       {job.salary && (

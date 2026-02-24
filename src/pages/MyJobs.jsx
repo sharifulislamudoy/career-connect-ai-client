@@ -13,7 +13,8 @@ import {
   FaPlusCircle,
   FaClipboardList,
   FaSearch,
-  FaBuilding
+  FaBuilding,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -38,7 +39,7 @@ const MyJobs = () => {
       setLoading(true);
       const response = await fetch(`http://localhost:5000/api/jobs/recruiter/${user.uid}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setJobs(data.jobs);
       }
@@ -53,12 +54,12 @@ const MyJobs = () => {
     if (!window.confirm('Are you sure you want to delete this job?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
+      const response = await fetch(`http://localhost:5000/api/jobs/${jobId}?recruiterId=${user.uid}`, {
         method: 'DELETE'
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setJobs(jobs.filter(job => job._id !== jobId));
         alert('Job deleted successfully');
@@ -66,29 +67,6 @@ const MyJobs = () => {
     } catch (error) {
       console.error('Error deleting job:', error);
       alert('Failed to delete job');
-    }
-  };
-
-  const handleStatusChange = async (jobId, newStatus) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setJobs(jobs.map(job => 
-          job._id === jobId ? { ...job, status: newStatus } : job
-        ));
-      }
-    } catch (error) {
-      console.error('Error updating job status:', error);
-      alert('Failed to update job status');
     }
   };
 
@@ -111,9 +89,9 @@ const MyJobs = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
-    //   case 'closed': return 'bg-red-100 text-red-800';
-    //   case 'draft': return 'bg-yellow-100 text-yellow-800';
-    //   default: return 'bg-gray-100 text-gray-800';
+      case 'closed': return 'bg-red-100 text-red-800';
+      case 'draft': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -222,8 +200,8 @@ const MyJobs = () => {
               {jobs.length === 0 ? 'No jobs posted yet' : 'No jobs match your filters'}
             </h3>
             <p className="text-gray-600 mb-6">
-              {jobs.length === 0 
-                ? 'Start posting your first job opportunity!' 
+              {jobs.length === 0
+                ? 'Start posting your first job opportunity!'
                 : 'Try adjusting your search criteria'}
             </p>
             {jobs.length === 0 && (
@@ -255,11 +233,14 @@ const MyJobs = () => {
                           {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                         </span>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div className="flex items-center text-gray-600 text-sm">
                           <FaBuilding className="mr-2 flex-shrink-0" />
                           <span>{job.company}</span>
+                          {job.isVerified && (
+                            <FaCheckCircle className="ml-2 text-blue-500" title="Verified Company" />
+                          )}
                         </div>
                         <div className="flex items-center text-gray-600 text-sm">
                           <FaMapMarkerAlt className="mr-2 flex-shrink-0" />
@@ -316,6 +297,13 @@ const MyJobs = () => {
                       >
                         <FaUsers className="mr-2" />
                         Applicants
+                      </Link>
+                      <Link
+                        to={`/edit-job/${job._id}`}
+                        className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded-xl hover:bg-yellow-100 transition-colors text-sm font-medium flex items-center"
+                      >
+                        <FaEdit className="mr-2" />
+                        Edit
                       </Link>
                       <button
                         onClick={() => handleDelete(job._id)}

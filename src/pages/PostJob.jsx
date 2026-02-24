@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import {
   FaSave,
-  FaPaperPlane,
   FaTimes,
   FaBriefcase,
   FaBuilding,
@@ -12,18 +11,20 @@ import {
   FaCalendarAlt,
   FaUsers,
   FaFileAlt,
-  FaCheck,
-  FaRegBuilding
+  FaRegBuilding,
+  FaUpload,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
+const cloudName = 'dohhfubsa';
+const uploadPreset = 'react_unsigned';
 
 const PostJob = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  
+  const [uploadingLicense, setUploadingLicense] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     company: '',
@@ -35,31 +36,13 @@ const PostJob = () => {
     experience: 'Mid',
     salary: '',
     applicationDeadline: '',
-    contactEmail: '',
-    website: ''
+    contactEmail: user?.email || '',
+    website: '',
+    licenseImage: '' // URL of uploaded license
   });
 
-  useEffect(() => {
-    // Check if user is recruiter
-    if (user) {
-      checkUserType();
-    } else {
-      navigate('/auth/login');
-    }
-  }, [user]);
-
-  const checkUserType = async () => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/users/${user.uid}`);
-      const data = await response.json();
-      
-      if (data.success && data.user.userType !== 'recruiter') {
-        navigate('/');
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-    }
-  };
+  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
+  const experienceLevels = ['Entry', 'Junior', 'Mid', 'Senior', 'Lead', 'Executive'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -69,16 +52,42 @@ const PostJob = () => {
     }));
   };
 
+  const handleLicenseUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingLicense(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        setFormData(prev => ({ ...prev, licenseImage: data.secure_url }));
+      } else {
+        alert('Upload failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploadingLicense(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const jobData = {
         ...formData,
-        recruiterId: user.uid,
-        recruiterEmail: user.email,
-        recruiterName: user.displayName || user.email
+        recruiterId: user.uid
       };
 
       const response = await fetch('http://localhost:5000/api/jobs', {
@@ -92,10 +101,9 @@ const PostJob = () => {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          navigate('/my-jobs');
-        }, 2000);
+        navigate('/my-jobs');
+      } else {
+        alert(data.message || 'Failed to post job');
       }
     } catch (error) {
       console.error('Error posting job:', error);
@@ -104,35 +112,6 @@ const PostJob = () => {
       setLoading(false);
     }
   };
-
-  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
-  const experienceLevels = ['Entry', 'Junior', 'Mid', 'Senior', 'Lead', 'Executive'];
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 flex items-center justify-center">
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-3xl shadow-2xl p-12 text-center max-w-md"
-        >
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <FaCheck className="text-white text-3xl" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Job Posted Successfully!</h2>
-          <p className="text-gray-600 mb-6">
-            Your job listing is now live and visible to job seekers.
-          </p>
-          <button
-            onClick={() => navigate('/my-jobs')}
-            className="bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition-colors font-semibold"
-          >
-            View My Jobs
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 pb-16">
@@ -148,7 +127,7 @@ const PostJob = () => {
             Post a New Job
           </h1>
           <p className="text-gray-600">
-            Fill in the details below to post your job opportunity.
+            Fill in the details to attract the best candidates.
           </p>
         </motion.div>
 
@@ -164,7 +143,7 @@ const PostJob = () => {
               <h3 className="text-xl font-semibold text-gray-900 border-b pb-3">
                 Basic Information
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -278,7 +257,9 @@ const PostJob = () => {
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Contact Email *
@@ -293,20 +274,67 @@ const PostJob = () => {
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Website
-                </label>
-                <input
-                  type="url"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleChange}
-                  placeholder="https://company.com"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Website
+                  </label>
+                  <input
+                    type="url"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleChange}
+                    placeholder="https://company.com"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Company License Upload (Optional) */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-gray-900 border-b pb-3">
+                Company Verification (Optional)
+              </h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-sm text-blue-800 mb-3">
+                  Upload a company license or registration document to verify your company.
+                  Verified jobs will display a blue verification badge.
+                </p>
+                <div className="flex items-center space-x-4">
+                  <label className="cursor-pointer bg-white border border-gray-300 rounded-xl px-4 py-2 hover:bg-gray-50 transition-colors">
+                    <FaUpload className="inline mr-2" />
+                    Choose File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLicenseUpload}
+                      className="hidden"
+                      disabled={uploadingLicense}
+                    />
+                  </label>
+                  {uploadingLicense && (
+                    <div className="flex items-center text-gray-600">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Uploading...
+                    </div>
+                  )}
+                  {formData.licenseImage && !uploadingLicense && (
+                    <div className="flex items-center text-green-600">
+                      <FaCheckCircle className="mr-2" />
+                      License uploaded
+                    </div>
+                  )}
+                </div>
+                {formData.licenseImage && (
+                  <div className="mt-3">
+                    <img
+                      src={formData.licenseImage}
+                      alt="License preview"
+                      className="max-h-32 rounded-lg border border-gray-200"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -384,7 +412,7 @@ const PostJob = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploadingLicense}
                 className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -394,7 +422,7 @@ const PostJob = () => {
                   </>
                 ) : (
                   <>
-                    <FaPaperPlane className="inline mr-2" />
+                    <FaSave className="inline mr-2" />
                     Post Job
                   </>
                 )}
