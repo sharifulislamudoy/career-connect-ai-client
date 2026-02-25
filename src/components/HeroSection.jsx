@@ -11,9 +11,8 @@ import {
 import { Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 
-
 const HeroSection = () => {
-    const { user } = useAuth()
+    const { user } = useAuth();
     const [messages, setMessages] = useState([
         {
             id: 1,
@@ -28,20 +27,20 @@ const HeroSection = () => {
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
 
-    // Scroll to bottom when messages change or typing completes
+    // Scroll to bottom when messages change
     useEffect(() => {
         const chatContainer = chatContainerRef.current;
         if (chatContainer) {
-            // Use setTimeout to ensure DOM is updated
             setTimeout(() => {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }, 100);
         }
     }, [messages, isLoading]);
 
+    // Typing effect for bot messages
     const typeText = (text, messageId, onComplete) => {
         let index = 0;
-        const typingSpeed = 20; // milliseconds per character
+        const typingSpeed = 20;
 
         const updateText = () => {
             if (index <= text.length) {
@@ -65,6 +64,52 @@ const HeroSection = () => {
         updateText();
     };
 
+    // Generate system prompt with platform information
+    const getSystemPrompt = () => {
+        const userType = user?.userType || 'guest';
+        const profession = user?.profession || 'your field';
+
+        return `You are Creative Career AI, an intelligent career assistant for the Creative Career AI platform.
+
+Platform Features & Routes:
+- Home: "/"
+- Job Search: "/jobs" – browse and filter jobs
+- Job Details: "/job/:id" – view a specific job
+- Post a Job (recruiters only): "/post-job"
+- My Jobs (recruiters): "/my-jobs"
+- My Applications (job seekers): "/my-applications"
+- Resume Builder: "/create-resume" – create ATS-friendly resumes
+- ATS Score Check: "/ats-score" – check resume against job descriptions
+- Mock Interviews: "/mock-interview" – practice with AI feedback
+- Learning Paths: "/learning-path" – personalized skill development
+- Network: "/network" – connect with professionals
+- Messages: "/messages" – communicate with recruiters/peers
+- Settings: "/settings" – manage profile and account
+- Pricing: "/pricing" – upgrade to premium plans
+
+Authentication Routes:
+- Login: "/auth/login"
+- Sign Up: "/auth/sign-up"
+- Social login options: Google, GitHub, Facebook, Apple, Phone
+
+User Context:
+- Current user type: ${userType}
+- User's profession: ${profession}
+
+Instructions:
+1. Be helpful, professional, and encouraging.
+2. Keep responses concise but informative.
+3. When referring to any platform feature, use the exact link format: <Link to="/path">Link Text</Link>
+   Example: You can create a resume using <Link to="/create-resume">Resume Builder</Link>.
+4. For authentication requests (sign up, login), always provide the direct link:
+   - Sign up: <Link to="/auth/sign-up">Create an account</Link>
+   - Login: <Link to="/auth/login">Log in here</Link>
+5. If the user asks about jobs related to their profession, suggest filtered links:
+   - e.g., <Link to="/jobs?search=${encodeURIComponent(profession)}">${profession} jobs</Link>
+6. Tailor responses based on user type (job seeker vs recruiter) when possible.
+7. Do not mention the underlying API or technical details.`;
+    };
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!inputMessage.trim()) return;
@@ -85,7 +130,6 @@ const HeroSection = () => {
             const response = await queryGroqAI(inputMessage);
             const botMessageId = Date.now() + 1;
 
-            // Add empty bot message first for typing effect
             const botMessage = {
                 id: botMessageId,
                 text: "",
@@ -96,11 +140,9 @@ const HeroSection = () => {
 
             setMessages(prev => [...prev, botMessage]);
 
-            // Start typing effect
             typeText(response, botMessageId, () => {
                 setIsLoading(false);
             });
-
         } catch (error) {
             const errorMessage = {
                 id: Date.now() + 1,
@@ -115,7 +157,6 @@ const HeroSection = () => {
     };
 
     const queryGroqAI = async (userInput) => {
-        // Groq AI API integration
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -124,50 +165,8 @@ const HeroSection = () => {
             },
             body: JSON.stringify({
                 messages: [
-                    {
-                        role: "system",
-                        content: `You are Creative Career AI, an intelligent career assistant for a job-seeking platform. 
-          
-          Platform Features:
-          - AI-powered job matching
-          - Resume optimization
-          - Interview preparation
-          - Career guidance
-          - Skill assessment
-          
-          Navigation Routes:
-          - Home: Main
-          - Network: Professional networking
-          - Messages: Communication hub
-          - Notification: Alerts and updates
-          
-          Authentication Options:
-          - Email/Password login at: /auth/login
-          - Email/Password signup at: /auth/sign-up
-          - Google authentication
-          - GitHub authentication
-          - Facebook authentication
-          - Apple ID authentication
-          - Phone number verification
-          
-          Key Services:
-          - Smart job recommendations
-          - Resume analysis and scoring
-          - Mock interviews with AI
-          - Salary insights
-          - Company reviews
-          
-          Be helpful, professional, and encouraging. Keep responses concise but informative. Guide users to relevant platform features. 
-          
-          IMPORTANT: When users ask about signing up, creating account, or registration, always provide the direct link as: <Link to="/auth/sign-up">Create Account</Link>
-          When users ask about logging in, signing in, or login issues, always provide the direct link as: <Link to="/auth/login">Login Here</Link>
-          
-          You can mention these URLs directly in your responses when appropriate.`
-                    },
-                    {
-                        role: "user",
-                        content: userInput
-                    }
+                    { role: "system", content: getSystemPrompt() },
+                    { role: "user", content: userInput }
                 ],
                 model: "llama-3.1-8b-instant",
                 temperature: 0.7,
@@ -180,23 +179,20 @@ const HeroSection = () => {
         return data.choices[0].message.content;
     };
 
-    // Function to render message text with links
+    // Render message text with embedded Link components
     const renderMessageText = (text) => {
         if (typeof text !== 'string') return text;
 
-        // Convert Link components to actual links
         const linkRegex = /<Link to="([^"]+)">([^<]+)<\/Link>/g;
         const parts = [];
         let lastIndex = 0;
         let match;
 
         while ((match = linkRegex.exec(text)) !== null) {
-            // Add text before the link
             if (match.index > lastIndex) {
                 parts.push(text.slice(lastIndex, match.index));
             }
 
-            // Add the link component
             const [fullMatch, to, linkText] = match;
             parts.push(
                 <Link
@@ -212,17 +208,11 @@ const HeroSection = () => {
             lastIndex = match.index + fullMatch.length;
         }
 
-        // Add remaining text after the last link
         if (lastIndex < text.length) {
             parts.push(text.slice(lastIndex));
         }
 
-        // If no links found, return original text
-        if (parts.length === 0) {
-            return text;
-        }
-
-        return parts;
+        return parts.length > 0 ? parts : text;
     };
 
     const quickActions = [
@@ -230,19 +220,22 @@ const HeroSection = () => {
             icon: FaUserTie,
             title: "Find Jobs",
             description: "AI-powered job matching",
-            color: "blue"
+            color: "blue",
+            link: "/jobs"
         },
         {
             icon: FaBriefcase,
             title: "Optimize Resume",
             description: "Get your resume AI-scored",
-            color: "green"
+            color: "green",
+            link: "/create-resume"
         },
         {
             icon: FaChartLine,
             title: "Career Growth",
             description: "Personalized career path",
-            color: "purple"
+            color: "purple",
+            link: "/learning-path"
         }
     ];
 
@@ -258,17 +251,16 @@ const HeroSection = () => {
                         transition={{ duration: 0.6 }}
                         className="mt-15"
                     >
-                        {/* Main Heading */}
                         <div className="space-y-6">
                             <motion.h1
-                                className="font-bold text-gray-900 "
+                                className="font-bold text-gray-900"
                                 initial={{ opacity: 0, y: 30 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.2, duration: 0.6 }}
                             >
                                 <span className='text-7xl'>Find Your </span><br />
                                 <span className="text-blue-600 mx-1 text-4xl">Dream Job</span>
-                                <span className='text-4xl'>With AI</span>
+                                <span className='text-4xl'> With AI</span>
                             </motion.h1>
 
                             <motion.p
@@ -290,15 +282,16 @@ const HeroSection = () => {
                             transition={{ delay: 0.8, duration: 0.6 }}
                         >
                             {quickActions.map((action, index) => (
-                                <motion.div
-                                    key={index}
-                                    whileHover={{ scale: 1.05, y: -5 }}
-                                    className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 cursor-pointer"
-                                >
-                                    <action.icon className={`text-2xl text-${action.color}-500 mb-3`} />
-                                    <h3 className="font-semibold text-gray-900">{action.title}</h3>
-                                    <p className="text-sm text-gray-600 mt-1">{action.description}</p>
-                                </motion.div>
+                                <Link to={action.link} key={index}>
+                                    <motion.div
+                                        whileHover={{ scale: 1.05, y: -5 }}
+                                        className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 cursor-pointer"
+                                    >
+                                        <action.icon className={`text-2xl text-${action.color}-500 mb-3`} />
+                                        <h3 className="font-semibold text-gray-900">{action.title}</h3>
+                                        <p className="text-sm text-gray-600 mt-1">{action.description}</p>
+                                    </motion.div>
+                                </Link>
                             ))}
                         </motion.div>
                     </motion.div>
@@ -343,10 +336,11 @@ const HeroSection = () => {
                                         className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
                                     >
                                         <div
-                                            className={`max-w-[80%] p-4 rounded-2xl ${message.isBot
-                                                ? 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'
-                                                : 'bg-blue-500 text-white rounded-br-none'
-                                                }`}
+                                            className={`max-w-[80%] p-4 rounded-2xl ${
+                                                message.isBot
+                                                    ? 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'
+                                                    : 'bg-blue-500 text-white rounded-br-none'
+                                            }`}
                                         >
                                             <div className="text-sm leading-relaxed">
                                                 {renderMessageText(message.text)}
