@@ -7,10 +7,19 @@ import {
     FaUserTie,
     FaBriefcase,
     FaStar,
+    FaBrain,
+    FaRocket,
+    FaShieldAlt,
+    FaHandshake,
+    FaRegClipboard,
+    FaVideo,
+    FaUserCheck,
+    FaArrowRight
 } from 'react-icons/fa';
 import { Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 
+// ==================== Hero Section (copied from original) ====================
 const HeroSection = () => {
     const { user } = useAuth();
     const [messages, setMessages] = useState([
@@ -27,7 +36,6 @@ const HeroSection = () => {
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
 
-    // Scroll to bottom when messages change
     useEffect(() => {
         const chatContainer = chatContainerRef.current;
         if (chatContainer) {
@@ -37,7 +45,6 @@ const HeroSection = () => {
         }
     }, [messages, isLoading]);
 
-    // Typing effect for bot messages
     const typeText = (text, messageId, onComplete) => {
         let index = 0;
         const typingSpeed = 20;
@@ -64,7 +71,6 @@ const HeroSection = () => {
         updateText();
     };
 
-    // Generate system prompt with platform information
     const getSystemPrompt = () => {
         const userType = user?.userType || 'guest';
         const profession = user?.profession || 'your field';
@@ -179,7 +185,6 @@ Instructions:
         return data.choices[0].message.content;
     };
 
-    // Render message text with embedded Link components
     const renderMessageText = (text) => {
         if (typeof text !== 'string') return text;
 
@@ -414,4 +419,366 @@ Instructions:
     );
 };
 
-export default HeroSection;
+// ==================== Why Choose Us Section ====================
+const WhyChooseUs = () => {
+    const features = [
+        {
+            icon: FaBrain,
+            title: "AI-Powered Matching",
+            description: "Our advanced algorithms connect you with the perfect opportunities based on your skills and preferences.",
+            color: "blue"
+        },
+        {
+            icon: FaRocket,
+            title: "Accelerated Growth",
+            description: "Personalized learning paths and career advice to fast-track your professional development.",
+            color: "green"
+        },
+        {
+            icon: FaShieldAlt,
+            title: "Privacy First",
+            description: "Your data is encrypted and secure. We never share your information without consent.",
+            color: "purple"
+        },
+        {
+            icon: FaHandshake,
+            title: "Trusted by Thousands",
+            description: "Join a community of professionals who have advanced their careers with our platform.",
+            color: "orange"
+        }
+    ];
+
+    return (
+        <section className="py-20 bg-white">
+            <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                    className="text-center mb-16"
+                >
+                    <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                        Why Choose <span className="text-blue-600">Creative Career AI</span>
+                    </h2>
+                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                        We combine cutting-edge technology with human expertise to give you the edge in your job search.
+                    </p>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {features.map((feature, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.1, duration: 0.6 }}
+                            whileHover={{ y: -10 }}
+                            className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-3xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300"
+                        >
+                            <div className={`w-16 h-16 bg-${feature.color}-100 rounded-2xl flex items-center justify-center mb-6`}>
+                                <feature.icon className={`text-3xl text-${feature.color}-600`} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                            <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+};
+
+// ==================== Reviews Section (Marquee) ====================
+const ReviewsSection = () => {
+    const reviews = [
+        {
+            id: 1,
+            name: "Sarah Johnson",
+            role: "Software Engineer",
+            content: "This platform helped me land my dream job at a top tech company. The AI resume optimizer was a game-changer!",
+            rating: 5,
+            avatar: "👩‍💻"
+        },
+        {
+            id: 2,
+            name: "Michael Chen",
+            role: "Product Manager",
+            content: "The mock interviews with AI feedback were incredibly realistic. I felt fully prepared and confident.",
+            rating: 5,
+            avatar: "👨‍💼"
+        },
+        {
+            id: 3,
+            name: "Emily Rodriguez",
+            role: "Marketing Specialist",
+            content: "I love how the platform suggests personalized learning paths. It helped me upskill and get promoted.",
+            rating: 5,
+            avatar: "👩‍🎨"
+        },
+        {
+            id: 4,
+            name: "David Kim",
+            role: "Data Scientist",
+            content: "The job matching is spot on. I received relevant opportunities without the spam.",
+            rating: 4,
+            avatar: "👨‍🔬"
+        },
+        {
+            id: 5,
+            name: "Lisa Patel",
+            role: "HR Manager",
+            content: "As a recruiter, I find amazing candidates here. The AI filters save us so much time.",
+            rating: 5,
+            avatar: "👩‍💼"
+        },
+        {
+            id: 6,
+            name: "James Wilson",
+            role: "Graphic Designer",
+            content: "The resume builder made my portfolio stand out. Got multiple interview calls within a week!",
+            rating: 5,
+            avatar: "👨‍🎨"
+        },
+        {
+            id: 7,
+            name: "Anna Schmidt",
+            role: "Business Analyst",
+            content: "Excellent platform for career growth. The network feature connected me with great mentors.",
+            rating: 5,
+            avatar: "👩‍💼"
+        },
+        {
+            id: 8,
+            name: "Robert Brown",
+            role: "Sales Executive",
+            content: "The ATS score check helped me optimize my resume for each application. Highly recommend!",
+            rating: 4,
+            avatar: "👨‍💼"
+        }
+    ];
+
+    // Duplicate reviews to create seamless loop
+    const duplicatedReviews = [...reviews, ...reviews];
+
+    return (
+        <section className="py-20 bg-gradient-to-br from-indigo-50 to-blue-50 overflow-hidden">
+            <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                    className="text-center mb-16"
+                >
+                    <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                        What Our <span className="text-blue-600">Users Say</span>
+                    </h2>
+                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                        Join thousands of satisfied professionals who transformed their careers with us.
+                    </p>
+                </motion.div>
+
+                {/* First row - left to right */}
+                <div className="relative flex overflow-x-hidden mb-8">
+                    <div className="animate-marquee-left whitespace-nowrap flex gap-6 py-4">
+                        {duplicatedReviews.map((review, index) => (
+                            <div
+                                key={`row1-${review.id}-${index}`}
+                                className="inline-block w-80 bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex-shrink-0"
+                            >
+                                <div className="flex items-center mb-4">
+                                    <span className="text-4xl mr-3">{review.avatar}</span>
+                                    <div>
+                                        <h4 className="font-bold text-gray-900">{review.name}</h4>
+                                        <p className="text-sm text-gray-600">{review.role}</p>
+                                    </div>
+                                </div>
+                                <p className="text-gray-700 mb-3 text-sm">"{review.content}"</p>
+                                <div className="flex text-yellow-400">
+                                    {[...Array(5)].map((_, i) => (
+                                        <FaStar key={i} className={i < review.rating ? 'text-yellow-400' : 'text-gray-300'} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Second row - right to left */}
+                <div className="relative flex overflow-x-hidden">
+                    <div className="animate-marquee-right whitespace-nowrap flex gap-6 py-4">
+                        {duplicatedReviews.map((review, index) => (
+                            <div
+                                key={`row2-${review.id}-${index}`}
+                                className="inline-block w-80 bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex-shrink-0"
+                            >
+                                <div className="flex items-center mb-4">
+                                    <span className="text-4xl mr-3">{review.avatar}</span>
+                                    <div>
+                                        <h4 className="font-bold text-gray-900">{review.name}</h4>
+                                        <p className="text-sm text-gray-600">{review.role}</p>
+                                    </div>
+                                </div>
+                                <p className="text-gray-700 mb-3 text-sm">"{review.content}"</p>
+                                <div className="flex text-yellow-400">
+                                    {[...Array(5)].map((_, i) => (
+                                        <FaStar key={i} className={i < review.rating ? 'text-yellow-400' : 'text-gray-300'} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Custom keyframes for marquee animations */}
+            <style jsx>{`
+                @keyframes marquee-left {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                @keyframes marquee-right {
+                    0% { transform: translateX(-50%); }
+                    100% { transform: translateX(0); }
+                }
+                .animate-marquee-left {
+                    animation: marquee-left 30s linear infinite;
+                }
+                .animate-marquee-right {
+                    animation: marquee-right 30s linear infinite;
+                }
+            `}</style>
+        </section>
+    );
+};
+
+// ==================== How It Works Section ====================
+const HowItWorks = () => {
+    const steps = [
+        {
+            icon: FaRegClipboard,
+            title: "Create Profile",
+            description: "Sign up and build your profile with your skills, experience, and career goals.",
+            color: "blue"
+        },
+        {
+            icon: FaRobot,
+            title: "AI Matching",
+            description: "Our AI analyzes your profile and matches you with the best opportunities.",
+            color: "green"
+        },
+        {
+            icon: FaVideo,
+            title: "Prepare with AI",
+            description: "Use mock interviews and resume tools to get ready for your dream job.",
+            color: "purple"
+        },
+        {
+            icon: FaUserCheck,
+            title: "Get Hired",
+            description: "Connect with employers and land the job you deserve.",
+            color: "orange"
+        }
+    ];
+
+    return (
+        <section className="py-20 bg-white">
+            <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                    className="text-center mb-16"
+                >
+                    <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                        How It <span className="text-blue-600">Works</span>
+                    </h2>
+                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                        Four simple steps to accelerate your career with AI.
+                    </p>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {steps.map((step, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.1, duration: 0.6 }}
+                            className="relative"
+                        >
+                            {/* Connector line (except last) */}
+                            {index < steps.length - 1 && (
+                                <div className="hidden lg:block absolute top-16 left-1/2 w-full h-0.5 bg-gradient-to-r from-blue-200 to-indigo-200"></div>
+                            )}
+                            <div className="relative z-10 bg-white rounded-2xl p-8 text-center border border-gray-100 shadow-lg hover:shadow-xl transition-shadow">
+                                <div className={`w-20 h-20 bg-${step.color}-100 rounded-2xl flex items-center justify-center mx-auto mb-6`}>
+                                    <step.icon className={`text-4xl text-${step.color}-600`} />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+                                <p className="text-gray-600">{step.description}</p>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+};
+
+// ==================== Call to Action Section ====================
+const CTASection = () => {
+    return (
+        <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-600">
+            <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        Ready to Transform Your Career?
+                    </h2>
+                    <p className="text-xl text-blue-100 mb-10 max-w-3xl mx-auto">
+                        Join thousands of professionals who are already using AI to land their dream jobs.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Link
+                            to="/auth/sign-up"
+                            className="inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 font-semibold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                        >
+                            Get Started Free
+                            <FaArrowRight className="ml-2" />
+                        </Link>
+                        <Link
+                            to="/pricing"
+                            className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-blue-600 transition-all duration-300"
+                        >
+                            View Pricing
+                        </Link>
+                    </div>
+                </motion.div>
+            </div>
+        </section>
+    );
+};
+
+// ==================== Main Home Page ====================
+const Home = () => {
+    return (
+        <main>
+            <HeroSection />
+            <WhyChooseUs />
+            <ReviewsSection />
+            <HowItWorks />
+            <CTASection />
+        </main>
+    );
+};
+
+export default Home;
