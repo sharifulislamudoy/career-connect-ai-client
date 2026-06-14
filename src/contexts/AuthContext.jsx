@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   // Save user to backend
   const saveUserToBackend = async (userData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,10 +62,9 @@ export const AuthProvider = ({ children }) => {
   // Get user from backend
   const getUserFromBackend = async (uid) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${uid}`);
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${uid}`);
       
       if (!response.ok) {
-        // If user not found (404), return null
         if (response.status === 404) {
           return null;
         }
@@ -94,6 +93,44 @@ export const AuthProvider = ({ children }) => {
       return false;
     }
   };
+
+  // ========== TWO-STEP VERIFICATION METHODS ==========
+  
+  // Send verification code (for login or signup)
+  const sendVerificationCode = async (email, type, userData = null) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, type, userData }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message);
+      return data;
+    } catch (error) {
+      console.error('Error sending verification code:', error);
+      throw error;
+    }
+  };
+
+  // Verify code and get pending data (for signup) or just confirm (for login)
+  const verifyCode = async (email, code, type) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, type }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message);
+      return data; // contains userData for signup type
+    } catch (error) {
+      console.error('Error verifying code:', error);
+      throw error;
+    }
+  };
+
+  // ========== AUTHENTICATION METHODS ==========
 
   // Sign up with email and password
   const signUp = async (email, password, userData) => {
@@ -150,11 +187,8 @@ export const AuthProvider = ({ children }) => {
       if (!backendUser) {
         // User doesn't exist in backend, sign them out from Firebase
         await signOut(auth);
-        
-        // Clear user state
         setUser(null);
         setUserProfile(null);
-        
         throw new Error('Account not found. Please sign up first.');
       }
 
@@ -220,10 +254,10 @@ export const AuthProvider = ({ children }) => {
   // Clear error
   const clearError = () => setError('');
 
-  // Update user profile
+  // Update user profile in backend
   const updateUserProfile = async (uid, updateData) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${uid}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${uid}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -251,17 +285,11 @@ export const AuthProvider = ({ children }) => {
 
     if (currentUser) {
       try {
-        // Fetch user profile from backend
         const userProfile = await getUserFromBackend(currentUser.uid);
-        
         if (userProfile) {
           setUserProfile(userProfile);
         } else {
-          // User exists in Firebase but not in backend
-          // This can happen if backend was reset or user was deleted from backend
           console.warn('User exists in Firebase but not in backend database');
-          // Optionally, you can sign them out here
-          // await logout();
         }
       } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -286,6 +314,8 @@ export const AuthProvider = ({ children }) => {
     signInWithGoogle,
     logout,
     updateUserProfile,
+    sendVerificationCode,
+    verifyCode,
     error,
     clearError,
     loading

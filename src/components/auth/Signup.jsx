@@ -3,18 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FaGoogle, 
-  FaEnvelope,
-  FaLock,
-  FaEye,
-  FaEyeSlash,
-  FaArrowLeft,
-  FaUpload,
-  FaUser,
-  FaBriefcase,
-  FaCheck,
-  FaExclamationTriangle,
-  FaSpinner
+  FaGoogle, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaArrowLeft,
+  FaUpload, FaUser, FaBriefcase, FaCheck, FaExclamationTriangle, FaSpinner
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -23,6 +13,9 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [uploading, setUploading] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(false); // true = show verification code input
+  const [verificationCode, setVerificationCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -36,33 +29,30 @@ const SignUp = () => {
     cloudinaryUrl: ''
   });
 
-  const { signUp, signInWithGoogle, error, clearError, user } = useAuth();
+  const { signUp, signInWithGoogle, sendVerificationCode, verifyCode, error, clearError, user } = useAuth();
   const navigate = useNavigate();
 
-  // Cloudinary configuration
-  const cloudName = 'dohhfubsa';
-  const uploadPreset = 'react_unsigned';
+  // Cloudinary config
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dohhfubsa';
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'react_unsigned';
 
-  // Redirect if user is already logged in
+  // Redirect if already logged in
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
+    if (user) navigate('/');
   }, [user, navigate]);
 
-  // Clear error when component unmounts or form changes
   useEffect(() => {
     return () => clearError();
   }, [clearError]);
 
-  const socialLogins = [
-    { 
-      name: 'Google', 
-      icon: FaGoogle, 
-      color: 'border border-gray-200 text-gray-700 hover:shadow-lg',
-      handler: handleGoogleSignUp
-    },
-  ];
+  // Countdown timer for resend code
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const professions = [
     'Web Developer',
@@ -91,46 +81,26 @@ const SignUp = () => {
     { number: 3, title: 'Complete' }
   ];
 
-  async function handleGoogleSignUp() {
-    try {
-      clearError();
-      await signInWithGoogle();
-      toast.success('Account created successfully! Please complete your profile.');
-      navigate('/settings');
-    } catch (error) {
-      console.error('Google sign up failed:', error);
-      toast.error('Google sign up failed. Please try again.');
-    }
-  }
-
   // Upload image to Cloudinary
   const uploadToCloudinary = async (file) => {
     try {
       setUploading(true);
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', uploadPreset);
-      formData.append('cloud_name', cloudName);
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('upload_preset', uploadPreset);
+      formDataUpload.append('cloud_name', cloudName);
 
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
+        { method: 'POST', body: formDataUpload }
       );
 
-      if (!response.ok) {
-        throw new Error('Image upload failed');
-      }
-
+      if (!response.ok) throw new Error('Upload failed');
       const data = await response.json();
-      return data.secure_url; // Return the Cloudinary URL
-
+      return data.secure_url;
     } catch (error) {
-      console.error('Error uploading image to Cloudinary:', error);
-      throw new Error('Failed to upload image. Please try again.');
+      console.error('Upload error:', error);
+      throw new Error('Failed to upload image');
     } finally {
       setUploading(false);
     }
@@ -138,99 +108,155 @@ const SignUp = () => {
 
   const handleInputChange = async (e) => {
     const { name, value, files } = e.target;
-    
     if (name === 'profilePhoto' && files[0]) {
       const file = files[0];
-      
-      // Create local preview immediately
       const previewUrl = URL.createObjectURL(file);
-      setFormData(prev => ({
-        ...prev,
-        profilePhoto: file,
-        photoPreview: previewUrl
-      }));
-
-      // Upload to Cloudinary
+      setFormData(prev => ({ ...prev, profilePhoto: file, photoPreview: previewUrl }));
       try {
-        const cloudinaryUrl = await uploadToCloudinary(file);
-        setFormData(prev => ({
-          ...prev,
-          cloudinaryUrl: cloudinaryUrl
-        }));
-      } catch (error) {
-        console.error('Upload failed:', error);
-        toast.error('Failed to upload image. Please try again.');
+        const url = await uploadToCloudinary(file);
+        setFormData(prev => ({ ...prev, cloudinaryUrl: url }));
+        toast.success('Photo uploaded successfully');
+      } catch (err) {
+        toast.error('Photo upload failed');
       }
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    clearError();
-
+  // Step navigation
+  const nextStep = () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     } else {
-      try {
-        if (formData.password !== formData.confirmPassword) {
-          setError("Passwords don't match");
-          toast.error("Passwords don't match");
-          return;
-        }
-
-        // Wait for upload to complete if there's a photo
-        if (formData.profilePhoto && !formData.cloudinaryUrl && uploading) {
-          setError("Please wait for image upload to complete");
-          toast.error("Please wait for image upload to complete");
-          return;
-        }
-
-        const userData = {
-          fullName: formData.fullName,
-          photoURL: formData.cloudinaryUrl || formData.photoPreview, // Use Cloudinary URL if available
-          location: formData.location,
-          profession: formData.profession,
-          userType: formData.userType,
-          package: 'Basic',
-          packageExpiry: null
-        };
-
-        await signUp(formData.email, formData.password, userData);
-        setCurrentStep(4);
-        toast.success('Account created successfully! Please complete your profile.');
-        setTimeout(() => {
-          navigate('/settings');
-        }, 2000);
-      } catch (error) {
-        console.error('Signup failed:', error);
-        toast.error('Signup failed. Please try again.');
-      }
+      // On step 3, when "Complete Profile" is clicked, start verification
+      handleStartVerification();
     }
   };
 
-  const handleBack = () => {
-    clearError();
+  const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  // Error display component
+  // Validate current step before proceeding
+  const validateStep = () => {
+    switch (currentStep) {
+      case 1:
+        if (!formData.email || !formData.password || !formData.confirmPassword) {
+          toast.error('Please fill all fields');
+          return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          toast.error("Passwords don't match");
+          return false;
+        }
+        if (formData.password.length < 6) {
+          toast.error('Password must be at least 6 characters');
+          return false;
+        }
+        return true;
+      case 2:
+        if (!formData.fullName || !formData.location || !formData.profession) {
+          toast.error('Please fill all profile fields');
+          return false;
+        }
+        return true;
+      case 3:
+        if (!formData.userType) {
+          toast.error('Please select whether you are a Job Seeker or Recruiter');
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (validateStep()) {
+      nextStep();
+    }
+  };
+
+  // Send verification code after final step
+  const handleStartVerification = async () => {
+    // Prepare user data to be stored temporarily on backend
+    const userDataToStore = {
+      fullName: formData.fullName,
+      photoURL: formData.cloudinaryUrl || formData.photoPreview || '',
+      location: formData.location,
+      profession: formData.profession,
+      userType: formData.userType,
+    };
+
+    try {
+      await sendVerificationCode(formData.email, 'signup', userDataToStore);
+      setVerificationStep(true);
+      setCountdown(60);
+      toast.success('Verification code sent to your email');
+    } catch (err) {
+      toast.error(err.message || 'Failed to send verification code');
+    }
+  };
+
+  // Verify code and create account
+  const handleVerifyAndSignUp = async (e) => {
+    e.preventDefault();
+    if (!verificationCode || verificationCode.length !== 6) {
+      toast.error('Please enter the 6-digit code');
+      return;
+    }
+    try {
+      // Verify code with backend
+      const result = await verifyCode(formData.email, verificationCode, 'signup');
+      // Now create Firebase account
+      await signUp(formData.email, formData.password, result.userData);
+      toast.success('Account created successfully! Please complete your profile.');
+      navigate('/settings');
+    } catch (err) {
+      toast.error(err.message || 'Verification failed');
+    }
+  };
+
+  const resendCode = async () => {
+    if (countdown > 0) return;
+    const userDataToStore = {
+      fullName: formData.fullName,
+      photoURL: formData.cloudinaryUrl || formData.photoPreview || '',
+      location: formData.location,
+      profession: formData.profession,
+      userType: formData.userType,
+    };
+    try {
+      await sendVerificationCode(formData.email, 'signup', userDataToStore);
+      setCountdown(60);
+      toast.success('New verification code sent');
+    } catch (err) {
+      toast.error('Failed to resend code');
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      await signInWithGoogle();
+      navigate('/settings');
+    } catch (err) {
+      toast.error('Google sign up failed');
+    }
+  };
+
+  // Error display
   const ErrorMessage = () => {
     if (!error) return null;
-
     return (
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start space-x-3"
       >
-        <FaExclamationTriangle className="text-red-500 mt-0.5 flex-shrink-0" />
+        <FaExclamationTriangle className="text-red-500 mt-0.5" />
         <div>
           <p className="text-red-800 text-sm font-medium">Sign up failed</p>
           <p className="text-red-600 text-sm mt-1">{error}</p>
@@ -239,6 +265,7 @@ const SignUp = () => {
     );
   };
 
+  // Render step 1: Account (email, password)
   const renderStep1 = () => (
     <motion.div
       key="step1"
@@ -249,9 +276,7 @@ const SignUp = () => {
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email Address
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
           <div className="relative group">
             <input
               type="email"
@@ -259,16 +284,14 @@ const SignUp = () => {
               value={formData.email}
               onChange={handleInputChange}
               placeholder="you@example.com"
-              className="w-full pl-12 pr-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-300 text-sm font-medium placeholder-gray-400 group-hover:bg-white/80"
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
               required
             />
-            <FaEnvelope className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm transition-colors duration-200 group-focus-within:text-blue-500" />
+            <FaEnvelope className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Password
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
           <div className="relative group">
             <input
               type={showPassword ? "text" : "password"}
@@ -276,23 +299,21 @@ const SignUp = () => {
               value={formData.password}
               onChange={handleInputChange}
               placeholder="Create a strong password"
-              className="w-full pl-12 pr-12 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-300 text-sm font-medium placeholder-gray-400 group-hover:bg-white/80"
+              className="w-full pl-12 pr-12 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
               required
             />
-            <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm transition-colors duration-200 group-focus-within:text-blue-500" />
+            <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Confirm Password
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
           <div className="relative group">
             <input
               type={showPassword ? "text" : "password"}
@@ -300,16 +321,17 @@ const SignUp = () => {
               value={formData.confirmPassword}
               onChange={handleInputChange}
               placeholder="Confirm your password"
-              className="w-full pl-12 pr-12 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-300 text-sm font-medium placeholder-gray-400 group-hover:bg-white/80"
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
               required
             />
-            <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm transition-colors duration-200 group-focus-within:text-blue-500" />
+            <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
         </div>
       </div>
     </motion.div>
   );
 
+  // Render step 2: Profile (name, location, profession)
   const renderStep2 = () => (
     <motion.div
       key="step2"
@@ -319,44 +341,36 @@ const SignUp = () => {
       className="space-y-6"
     >
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Full Name
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
         <input
           type="text"
           name="fullName"
           value={formData.fullName}
           onChange={handleInputChange}
           placeholder="Enter your full name"
-          className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-300 text-sm font-medium placeholder-gray-400 hover:bg-white/80"
+          className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
-
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Location
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
         <input
           type="text"
           name="location"
           value={formData.location}
           onChange={handleInputChange}
           placeholder="City, Country"
-          className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-300 text-sm font-medium placeholder-gray-400 hover:bg-white/80"
+          className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
-
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Profession
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Profession</label>
         <select
           name="profession"
           value={formData.profession}
           onChange={handleInputChange}
-          className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:outline-none focus:ring-3 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-300 text-sm font-medium text-gray-700 appearance-none hover:bg-white/80"
+          className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
           required
         >
           <option value="">Select your profession</option>
@@ -368,6 +382,7 @@ const SignUp = () => {
     </motion.div>
   );
 
+  // Render step 3: Complete (user type + photo)
   const renderStep3 = () => (
     <motion.div
       key="step3"
@@ -378,9 +393,7 @@ const SignUp = () => {
     >
       {/* User Type Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-4">
-          I am a...
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-4">I am a...</label>
         <div className="grid grid-cols-2 gap-4">
           {userTypes.map((type) => (
             <motion.label
@@ -419,9 +432,7 @@ const SignUp = () => {
 
       {/* Photo Upload */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-4">
-          Profile Photo (Optional)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-4">Profile Photo (Optional)</label>
         <div className="flex items-center justify-center">
           <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-blue-400 transition-colors duration-300 group bg-gray-50/50 hover:bg-white/80 relative overflow-hidden">
             {formData.photoPreview ? (
@@ -465,65 +476,53 @@ const SignUp = () => {
           </label>
         </div>
         {uploading && (
-          <p className="text-xs text-blue-600 text-center mt-2">
-            Uploading to Cloudinary...
-          </p>
-        )}
-        {formData.cloudinaryUrl && !uploading && (
-          <p className="text-xs text-green-600 text-center mt-2">
-            ✓ Image uploaded successfully to Cloudinary
-          </p>
+          <p className="text-xs text-blue-600 text-center mt-2">Uploading to Cloudinary...</p>
         )}
       </div>
     </motion.div>
   );
 
-  const renderCompletion = () => (
+  // Render verification code screen
+  const renderVerification = () => (
     <motion.div
-      key="completion"
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="text-center space-y-6 py-8"
+      key="verification"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
     >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.2, type: "spring" }}
-        className="w-20 h-20 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/25"
+      <div className="text-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-900">Verify Your Email</h3>
+        <p className="text-gray-600 text-sm mt-2">
+          We've sent a 6-digit verification code to <strong>{formData.email}</strong>
+        </p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Verification Code</label>
+        <input
+          type="text"
+          value={verificationCode}
+          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-center text-2xl tracking-widest font-mono focus:ring-2 focus:ring-blue-500"
+          placeholder="000000"
+          maxLength="6"
+          required
+        />
+      </div>
+      <button
+        onClick={handleVerifyAndSignUp}
+        className="w-full bg-blue-500 text-white py-4 rounded-2xl font-semibold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/25"
       >
-        <FaCheck className="text-white text-2xl" />
-      </motion.div>
-      
-      <h3 className="text-2xl font-bold text-gray-900">
-        Welcome to Creative Career AI!
-      </h3>
-      
-      <p className="text-gray-600">
-        Your account has been created successfully. We're excited to help you advance your career.
-      </p>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-blue-50/50 rounded-2xl p-6 border border-blue-200/50"
-      >
-        <h4 className="font-semibold text-blue-900 mb-2">What's next?</h4>
-        <ul className="text-sm text-blue-800 space-y-2 text-left">
-          <li className="flex items-center">
-            <FaCheck className="text-green-500 mr-2 text-xs" />
-            Complete your profile to get better matches
-          </li>
-          <li className="flex items-center">
-            <FaCheck className="text-green-500 mr-2 text-xs" />
-            Explore job opportunities tailored for you
-          </li>
-          <li className="flex items-center">
-            <FaCheck className="text-green-500 mr-2 text-xs" />
-            Connect with industry professionals
-          </li>
-        </ul>
-      </motion.div>
+        Verify & Create Account
+      </button>
+      <div className="text-center">
+        <button
+          onClick={resendCode}
+          disabled={countdown > 0}
+          className="text-sm text-blue-600 hover:underline disabled:text-gray-400"
+        >
+          Resend code {countdown > 0 && `(${countdown}s)`}
+        </button>
+      </div>
     </motion.div>
   );
 
@@ -539,7 +538,7 @@ const SignUp = () => {
           to="/"
           className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors duration-200 group"
         >
-          <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform duration-200" />
+          <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
           Back to Home
         </Link>
       </motion.div>
@@ -548,24 +547,21 @@ const SignUp = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
         className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/10 border border-gray-100/80 p-8"
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Join Creative Career AI
           </h2>
           <p className="text-gray-600">
-            Create your account in just a few steps
+            {!verificationStep ? 'Create your account in just a few steps' : 'Verify your email to continue'}
           </p>
         </div>
 
-        {/* Error Message */}
         <ErrorMessage />
 
-        {/* Progress Steps */}
-        {currentStep <= 3 && (
+        {/* Progress Steps (only if not in verification step) */}
+        {!verificationStep && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               {steps.map((step, index) => (
@@ -593,74 +589,47 @@ const SignUp = () => {
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <AnimatePresence mode="wait">
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}
-            {currentStep === 3 && renderStep3()}
-            {currentStep === 4 && renderCompletion()}
-          </AnimatePresence>
+        {/* Form / Verification */}
+        <AnimatePresence mode="wait">
+          {!verificationStep ? (
+            <motion.div key="form">
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
 
-          {/* Navigation Buttons */}
-          {currentStep <= 3 && (
-            <div className={`flex space-x-4 mt-8 ${currentStep === 1 ? 'justify-end' : ''}`}>
-              {currentStep > 1 && (
+              <div className={`flex space-x-4 mt-8 ${currentStep === 1 ? 'justify-end' : ''}`}>
+                {currentStep > 1 && (
+                  <motion.button
+                    type="button"
+                    onClick={prevStep}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex-1 bg-gray-100 text-gray-600 py-4 px-6 rounded-2xl text-base font-semibold hover:bg-gray-200 transition-all duration-200 border border-gray-200"
+                  >
+                    Back
+                  </motion.button>
+                )}
                 <motion.button
                   type="button"
-                  onClick={handleBack}
-                  whileHover={{ scale: 1.02 }}
+                  onClick={handleNext}
+                  whileHover={{ scale: 1.02, boxShadow: "0 20px 40px -10px rgba(59, 130, 246, 0.4)" }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex-1 bg-gray-100 text-gray-600 py-4 px-6 rounded-2xl text-base font-semibold hover:bg-gray-200 transition-all duration-200 border border-gray-200"
+                  disabled={uploading}
+                  className={`${
+                    currentStep > 1 ? 'flex-1' : 'w-full'
+                  } bg-blue-500 text-white py-4 px-6 rounded-2xl text-base font-semibold hover:shadow-xl transition-all duration-200 shadow-lg shadow-blue-500/25 disabled:opacity-50`}
                 >
-                  Back
+                  {currentStep === 3 ? 'Complete Profile' : 'Continue'}
                 </motion.button>
-              )}
-              <motion.button
-                type="submit"
-                whileHover={{ 
-                  scale: 1.02, 
-                  boxShadow: "0 20px 40px -10px rgba(59, 130, 246, 0.4)" 
-                }}
-                whileTap={{ scale: 0.98 }}
-                disabled={uploading}
-                className={`${
-                  currentStep > 1 ? 'flex-1' : 'w-full'
-                } bg-blue-500 text-white py-4 px-6 rounded-2xl text-base font-semibold hover:shadow-xl transition-all duration-200 shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {uploading ? (
-                  <div className="flex items-center justify-center">
-                    <FaSpinner className="animate-spin mr-2" />
-                    Uploading...
-                  </div>
-                ) : (
-                  currentStep === 3 ? 'Complete Profile' : 'Continue'
-                )}
-              </motion.button>
-            </div>
+              </div>
+            </motion.div>
+          ) : (
+            renderVerification()
           )}
+        </AnimatePresence>
 
-          {/* Get Started Button for Completion */}
-          {currentStep === 4 && (
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              whileHover={{ 
-                scale: 1.02, 
-                boxShadow: "0 20px 40px -10px rgba(59, 130, 246, 0.4)" 
-              }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/settings')}
-              className="w-full bg-blue-500 text-white py-4 px-6 rounded-2xl text-base font-semibold hover:shadow-xl transition-all duration-200 shadow-lg shadow-blue-500/25 mt-6"
-            >
-              Complete Your Profile
-            </motion.button>
-          )}
-        </form>
-
-        {/* Social Signup - Only show on first step */}
-        {currentStep === 1 && (
+        {/* Social Signup - only show on step 1 and not in verification */}
+        {!verificationStep && currentStep === 1 && (
           <>
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
@@ -670,37 +639,34 @@ const SignUp = () => {
                 <span className="px-4 bg-white/90 text-gray-500">Or sign up with</span>
               </div>
             </div>
-
             <div className="grid grid-cols-1 gap-3">
-              {socialLogins.map((social) => (
-                <motion.button
-                  key={social.name}
-                  type="button"
-                  onClick={social.handler}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`${social.color} py-3 px-4 rounded-2xl text-sm font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 bg-white/50 backdrop-blur-sm`}
-                >
-                  <social.icon className="text-base" />
-                  <span>{social.name}</span>
-                </motion.button>
-              ))}
+              <motion.button
+                onClick={handleGoogleSignUp}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="py-3 px-4 rounded-2xl text-sm font-semibold flex items-center justify-center space-x-2 bg-white/50 backdrop-blur-sm border border-gray-200 hover:shadow-lg transition-all"
+              >
+                <FaGoogle className="text-base" />
+                <span>Google</span>
+              </motion.button>
             </div>
           </>
         )}
 
         {/* Login Link */}
-        <div className="text-center mt-8 pt-6 border-t border-gray-200/50">
-          <p className="text-gray-600">
-            Already have an account?{' '}
-            <Link
-              to="/auth/login"
-              className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200"
-            >
-              Sign in
-            </Link>
-          </p>
-        </div>
+        {!verificationStep && (
+          <div className="text-center mt-8 pt-6 border-t border-gray-200/50">
+            <p className="text-gray-600">
+              Already have an account?{' '}
+              <Link
+                to="/auth/login"
+                className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );
