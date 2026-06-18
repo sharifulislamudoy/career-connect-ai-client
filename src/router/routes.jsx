@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { Navigate } from "react-router";
 import Main from "../layouts/Main";
 import Home from "../pages/Home";
 import Login from "../components/auth/Login";
@@ -21,6 +22,13 @@ import Messages from "../pages/Messages";
 import ResumeBuilder from "../pages/ResumeBuilder";
 import ProtectedRoute from "../components/ProtectedRoute";
 
+// Admin components
+import AdminLayout from "../layouts/AdminLayout";
+import AdminUsers from "../pages/AdminUsers";
+import AdminDashboard from "../pages/AdminDashboard";
+import AdminJobs from "../pages/AdminJobs"; // new
+import ModeratorRoute from "../components/ModeratorRoute";
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -28,10 +36,10 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        Component: Home, // public home page
+        Component: Home,
       },
       {
-        path: '/pricing',
+        path: "/pricing",
         element: (
           <ProtectedRoute>
             <Payment />
@@ -39,7 +47,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/ats-score',
+        path: "/ats-score",
         element: (
           <ProtectedRoute>
             <ATSScoreCheck />
@@ -47,7 +55,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/settings',
+        path: "/settings",
         element: (
           <ProtectedRoute>
             <Settings />
@@ -55,7 +63,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/mock-interview',
+        path: "/mock-interview",
         element: (
           <ProtectedRoute>
             <MockInterview />
@@ -63,7 +71,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/learning-path',
+        path: "/learning-path",
         element: (
           <ProtectedRoute>
             <LearningPathGenerator />
@@ -71,7 +79,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/jobs',
+        path: "/jobs",
         element: (
           <ProtectedRoute>
             <Jobs />
@@ -79,7 +87,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/job/:id',
+        path: "/job/:id",
         element: (
           <ProtectedRoute>
             <JobDetail />
@@ -87,7 +95,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/post-job',
+        path: "/post-job",
         element: (
           <ProtectedRoute>
             <PostJob />
@@ -95,7 +103,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/my-jobs',
+        path: "/my-jobs",
         element: (
           <ProtectedRoute>
             <MyJobs />
@@ -103,7 +111,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/my-applications',
+        path: "/my-applications",
         element: (
           <ProtectedRoute>
             <MyApplications />
@@ -111,7 +119,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/apply/:id',
+        path: "/apply/:id",
         element: (
           <ProtectedRoute>
             <JobDetail />
@@ -119,7 +127,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/job/:id/applications',
+        path: "/job/:id/applications",
         element: (
           <ProtectedRoute>
             <JobApplications />
@@ -127,7 +135,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/edit-job/:id',
+        path: "/edit-job/:id",
         element: (
           <ProtectedRoute>
             <EditJob />
@@ -135,7 +143,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/network',
+        path: "/network",
         element: (
           <ProtectedRoute>
             <Network />
@@ -143,7 +151,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/messages',
+        path: "/messages",
         element: (
           <ProtectedRoute>
             <Messages />
@@ -151,7 +159,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/create-resume',
+        path: "/create-resume",
         element: (
           <ProtectedRoute>
             <ResumeBuilder />
@@ -161,16 +169,42 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: '/auth',
+    path: "/auth",
     Component: Auth,
     children: [
       {
-        path: 'login',
+        path: "login",
         Component: Login,
       },
       {
-        path: 'sign-up',
+        path: "sign-up",
         Component: SignUp,
+      },
+    ],
+  },
+  {
+    path: "/admin",
+    element: (
+      <ModeratorRoute>
+        <AdminLayout />
+      </ModeratorRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/admin/dashboard" replace />,
+      },
+      {
+        path: "dashboard",
+        element: <AdminDashboard />,
+      },
+      {
+        path: "users",
+        element: <AdminUsers />,
+      },
+      {
+        path: "jobs",
+        element: <AdminJobs />, // new
       },
     ],
   },

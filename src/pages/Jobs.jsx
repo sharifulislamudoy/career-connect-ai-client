@@ -13,7 +13,7 @@ import {
   FaCalendarAlt,
   FaUsers,
   FaRegBuilding,
-  FaCheckCircle // add verified icon
+  FaCheckCircle
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -34,10 +34,7 @@ const Jobs = () => {
   const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship'];
   const experienceLevels = ['Entry', 'Junior', 'Mid', 'Senior', 'Lead'];
 
-  useEffect(() => {
-    fetchJobs();
-  }, [currentPage, searchTerm, filters]);
-
+  // UPDATED: fetchJobs with userId query parameter
   const fetchJobs = async () => {
     try {
       setLoading(true);
@@ -45,12 +42,15 @@ const Jobs = () => {
         page: currentPage,
         limit: 12,
         search: searchTerm,
-        ...filters
-      }).toString();
-
+        location: filters.location,
+        type: filters.type,
+        experience: filters.experience
+      });
+      if (user) {
+        queryParams.append('userId', user.uid);
+      }
       const response = await fetch(`http://localhost:5000/api/jobs?${queryParams}`);
       const data = await response.json();
-
       if (data.success) {
         setJobs(data.jobs);
         setTotalPages(data.pagination.totalPages);
@@ -61,6 +61,10 @@ const Jobs = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchJobs();
+  }, [currentPage, searchTerm, filters]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -228,7 +232,6 @@ const Jobs = () => {
                         <div className="flex items-center text-gray-600 text-sm mb-2">
                           <FaRegBuilding className="mr-2" />
                           <span>{job.company}</span>
-                          {/* Verified Badge */}
                           {job.isVerified && (
                             <FaCheckCircle className="ml-2 text-blue-500" title="Verified Company" />
                           )}

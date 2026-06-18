@@ -240,10 +240,15 @@ const FeedContent = () => {
 
     const { user, userProfile } = useAuth();
 
+    // UPDATED: fetchPosts with userId query parameter
     const fetchPosts = async () => {
         try {
             setLoading(true);
-            const res = await fetch('http://localhost:5000/api/posts');
+            let url = 'http://localhost:5000/api/posts';
+            if (user) {
+                url += `?userId=${user.uid}`;
+            }
+            const res = await fetch(url);
             const result = await res.json();
             if (result.success) {
                 setPosts(result.posts || []);

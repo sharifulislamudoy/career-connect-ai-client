@@ -18,6 +18,11 @@ const Main = () => {
             return;
         }
 
+        // Skip check for admin or moderator roles
+        if (userProfile && (userProfile.role === 'admin' || userProfile.role === 'moderator')) {
+            return;
+        }
+
         // Check if user profile exists and is not complete
         if (userProfile && !userProfile.profileCompleted) {
             toast.error('Please complete your profile before accessing other features');

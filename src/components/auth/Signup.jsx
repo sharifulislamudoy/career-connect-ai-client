@@ -1,106 +1,144 @@
-// src/components/auth/SignUp.jsx
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaGoogle, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaArrowLeft,
-  FaUpload, FaUser, FaBriefcase, FaCheck, FaExclamationTriangle, FaSpinner
-} from 'react-icons/fa';
-import { useAuth } from '../../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FaGoogle,
+  FaEnvelope,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaArrowLeft,
+  FaUpload,
+  FaUser,
+  FaBriefcase,
+  FaCheck,
+  FaExclamationTriangle,
+  FaSpinner,
+} from "react-icons/fa";
+import { useAuth } from "../../contexts/AuthContext";
+import toast from "react-hot-toast";
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [uploading, setUploading] = useState(false);
-  const [verificationStep, setVerificationStep] = useState(false); // true = show verification code input
-  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    fullName: '',
-    location: '',
-    profession: '',
-    userType: '',
+    email: "",
+    password: "",
+    confirmPassword: "",
+    fullName: "",
+    location: "",
+    profession: "",
+    userType: "",
     profilePhoto: null,
-    photoPreview: '',
-    cloudinaryUrl: ''
+    photoPreview: "",
+    cloudinaryUrl: "",
   });
 
-  const { signUp, signInWithGoogle, sendVerificationCode, verifyCode, error, clearError, user } = useAuth();
+  const {
+    signUp,
+    signInWithGoogle,
+    sendVerificationCode,
+    verifyCode,
+    consumeVerificationCode,
+    error,
+    clearError,
+    user,
+  } = useAuth();
+
   const navigate = useNavigate();
 
-  // Cloudinary config
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dohhfubsa';
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'react_unsigned';
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dohhfubsa";
+  const uploadPreset =
+    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "react_unsigned";
 
-  // Redirect if already logged in
   useEffect(() => {
-    if (user) navigate('/');
+    if (user) navigate("/");
   }, [user, navigate]);
 
   useEffect(() => {
     return () => clearError();
   }, [clearError]);
 
-  // Countdown timer for resend code
   useEffect(() => {
     let timer;
+
     if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     }
+
     return () => clearTimeout(timer);
   }, [countdown]);
 
   const professions = [
-    'Web Developer',
-    'MERN Stack Developer',
-    'Frontend Developer',
-    'Backend Developer',
-    'Full Stack Developer',
-    'Digital Marketer',
-    'WordPress Developer',
-    'UI/UX Designer',
-    'Data Scientist',
-    'DevOps Engineer',
-    'Mobile App Developer',
-    'Software Engineer',
-    'Other'
+    "Web Developer",
+    "MERN Stack Developer",
+    "Frontend Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "Digital Marketer",
+    "WordPress Developer",
+    "UI/UX Designer",
+    "Data Scientist",
+    "DevOps Engineer",
+    "Mobile App Developer",
+    "Software Engineer",
+    "Other",
   ];
 
   const userTypes = [
-    { id: 'jobSeeker', name: 'Job Seeker', icon: FaUser, description: 'Find your dream job' },
-    { id: 'recruiter', name: 'Recruiter', icon: FaBriefcase, description: 'Hire top talent' },
+    {
+      id: "jobSeeker",
+      name: "Job Seeker",
+      icon: FaUser,
+      description: "Find your dream job",
+    },
+    {
+      id: "recruiter",
+      name: "Recruiter",
+      icon: FaBriefcase,
+      description: "Hire top talent",
+    },
   ];
 
   const steps = [
-    { number: 1, title: 'Account' },
-    { number: 2, title: 'Profile' },
-    { number: 3, title: 'Complete' }
+    { number: 1, title: "Account" },
+    { number: 2, title: "Profile" },
+    { number: 3, title: "Complete" },
   ];
 
-  // Upload image to Cloudinary
   const uploadToCloudinary = async (file) => {
     try {
       setUploading(true);
+
       const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      formDataUpload.append('upload_preset', uploadPreset);
-      formDataUpload.append('cloud_name', cloudName);
+      formDataUpload.append("file", file);
+      formDataUpload.append("upload_preset", uploadPreset);
+      formDataUpload.append("cloud_name", cloudName);
 
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        { method: 'POST', body: formDataUpload }
+        {
+          method: "POST",
+          body: formDataUpload,
+        }
       );
 
-      if (!response.ok) throw new Error('Upload failed');
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
       const data = await response.json();
+
       return data.secure_url;
     } catch (error) {
-      console.error('Upload error:', error);
-      throw new Error('Failed to upload image');
+      console.error("Upload error:", error);
+      throw new Error("Failed to upload image");
     } finally {
       setUploading(false);
     }
@@ -108,148 +146,207 @@ const SignUp = () => {
 
   const handleInputChange = async (e) => {
     const { name, value, files } = e.target;
-    if (name === 'profilePhoto' && files[0]) {
+
+    clearError();
+
+    if (name === "profilePhoto" && files?.[0]) {
       const file = files[0];
       const previewUrl = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, profilePhoto: file, photoPreview: previewUrl }));
+
+      setFormData((prev) => ({
+        ...prev,
+        profilePhoto: file,
+        photoPreview: previewUrl,
+      }));
+
       try {
         const url = await uploadToCloudinary(file);
-        setFormData(prev => ({ ...prev, cloudinaryUrl: url }));
-        toast.success('Photo uploaded successfully');
-      } catch (err) {
-        toast.error('Photo upload failed');
+
+        setFormData((prev) => ({
+          ...prev,
+          cloudinaryUrl: url,
+        }));
+
+        toast.success("Photo uploaded successfully");
+      } catch {
+        toast.error("Photo upload failed");
       }
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+
+      return;
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  // Step navigation
-  const nextStep = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      // On step 3, when "Complete Profile" is clicked, start verification
-      handleStartVerification();
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  // Validate current step before proceeding
   const validateStep = () => {
     switch (currentStep) {
       case 1:
         if (!formData.email || !formData.password || !formData.confirmPassword) {
-          toast.error('Please fill all fields');
+          toast.error("Please fill all fields");
           return false;
         }
+
         if (formData.password !== formData.confirmPassword) {
           toast.error("Passwords don't match");
           return false;
         }
+
         if (formData.password.length < 6) {
-          toast.error('Password must be at least 6 characters');
+          toast.error("Password must be at least 6 characters");
           return false;
         }
+
         return true;
+
       case 2:
         if (!formData.fullName || !formData.location || !formData.profession) {
-          toast.error('Please fill all profile fields');
+          toast.error("Please fill all profile fields");
           return false;
         }
+
         return true;
+
       case 3:
         if (!formData.userType) {
-          toast.error('Please select whether you are a Job Seeker or Recruiter');
+          toast.error("Please select whether you are a Job Seeker or Recruiter");
           return false;
         }
+
         return true;
+
       default:
         return true;
     }
   };
 
   const handleNext = () => {
-    if (validateStep()) {
-      nextStep();
+    if (!validateStep()) return;
+
+    if (currentStep < 3) {
+      setCurrentStep((prev) => prev + 1);
+      return;
+    }
+
+    handleStartVerification();
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
-  // Send verification code after final step
-  const handleStartVerification = async () => {
-    // Prepare user data to be stored temporarily on backend
-    const userDataToStore = {
+  const getUserDataToStore = () => {
+    return {
       fullName: formData.fullName,
-      photoURL: formData.cloudinaryUrl || formData.photoPreview || '',
+      photoURL: formData.cloudinaryUrl || formData.photoPreview || "",
       location: formData.location,
       profession: formData.profession,
       userType: formData.userType,
     };
+  };
+
+  const handleStartVerification = async () => {
+    if (uploading || isSubmitting) return;
+
+    setIsSubmitting(true);
 
     try {
-      await sendVerificationCode(formData.email, 'signup', userDataToStore);
+      await sendVerificationCode(
+        formData.email,
+        "signup",
+        getUserDataToStore()
+      );
+
       setVerificationStep(true);
       setCountdown(60);
-      toast.success('Verification code sent to your email');
+      toast.success("Verification code sent to your email");
     } catch (err) {
-      toast.error(err.message || 'Failed to send verification code');
+      toast.error(err.message || "Failed to send verification code");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Verify code and create account
   const handleVerifyAndSignUp = async (e) => {
     e.preventDefault();
-    if (!verificationCode || verificationCode.length !== 6) {
-      toast.error('Please enter the 6-digit code');
+
+    const cleanCode = verificationCode.trim();
+
+    if (!cleanCode || cleanCode.length !== 6) {
+      toast.error("Please enter the 6-digit code");
       return;
     }
+
+    setIsSubmitting(true);
+
     try {
-      // Verify code with backend
-      const result = await verifyCode(formData.email, verificationCode, 'signup');
-      // Now create Firebase account
+      const result = await verifyCode(formData.email, cleanCode, "signup");
+
       await signUp(formData.email, formData.password, result.userData);
-      toast.success('Account created successfully! Please complete your profile.');
-      navigate('/settings');
+
+      try {
+        await consumeVerificationCode(formData.email, cleanCode, "signup");
+      } catch (consumeError) {
+        console.warn("Code consume failed:", consumeError.message);
+      }
+
+      toast.success("Account created successfully! Please complete your profile.");
+      navigate("/settings");
     } catch (err) {
-      toast.error(err.message || 'Verification failed');
+      toast.error(err.message || "Verification failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const resendCode = async () => {
-    if (countdown > 0) return;
-    const userDataToStore = {
-      fullName: formData.fullName,
-      photoURL: formData.cloudinaryUrl || formData.photoPreview || '',
-      location: formData.location,
-      profession: formData.profession,
-      userType: formData.userType,
-    };
+    if (countdown > 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+
     try {
-      await sendVerificationCode(formData.email, 'signup', userDataToStore);
+      await sendVerificationCode(
+        formData.email,
+        "signup",
+        getUserDataToStore()
+      );
+
       setCountdown(60);
-      toast.success('New verification code sent');
+      toast.success("New verification code sent");
     } catch (err) {
-      toast.error('Failed to resend code');
+      toast.error(err.message || "Failed to resend code");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleGoogleSignUp = async () => {
+    setIsSubmitting(true);
+
     try {
       await signInWithGoogle();
-      navigate('/settings');
+      toast.success("Signed up successfully!");
+      navigate("/settings");
     } catch (err) {
-      toast.error('Google sign up failed');
+      toast.error(err.message || "Google sign up failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Error display
+  const goBackToForm = () => {
+    setVerificationStep(false);
+    setVerificationCode("");
+    clearError();
+  };
+
   const ErrorMessage = () => {
     if (!error) return null;
+
     return (
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -265,7 +362,6 @@ const SignUp = () => {
     );
   };
 
-  // Render step 1: Account (email, password)
   const renderStep1 = () => (
     <motion.div
       key="step1"
@@ -276,7 +372,10 @@ const SignUp = () => {
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Email Address
+          </label>
+
           <div className="relative group">
             <input
               type="email"
@@ -286,12 +385,18 @@ const SignUp = () => {
               placeholder="you@example.com"
               className="w-full pl-12 pr-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
               required
+              disabled={isSubmitting}
             />
+
             <FaEnvelope className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Password
+          </label>
+
           <div className="relative group">
             <input
               type={showPassword ? "text" : "password"}
@@ -301,19 +406,27 @@ const SignUp = () => {
               placeholder="Create a strong password"
               className="w-full pl-12 pr-12 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
               required
+              disabled={isSubmitting}
             />
+
             <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              disabled={isSubmitting}
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Confirm Password
+          </label>
+
           <div className="relative group">
             <input
               type={showPassword ? "text" : "password"}
@@ -323,7 +436,9 @@ const SignUp = () => {
               placeholder="Confirm your password"
               className="w-full pl-12 pr-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
               required
+              disabled={isSubmitting}
             />
+
             <FaLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
         </div>
@@ -331,7 +446,6 @@ const SignUp = () => {
     </motion.div>
   );
 
-  // Render step 2: Profile (name, location, profession)
   const renderStep2 = () => (
     <motion.div
       key="step2"
@@ -341,7 +455,10 @@ const SignUp = () => {
       className="space-y-6"
     >
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Full Name
+        </label>
+
         <input
           type="text"
           name="fullName"
@@ -350,10 +467,15 @@ const SignUp = () => {
           placeholder="Enter your full name"
           className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
           required
+          disabled={isSubmitting}
         />
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Location
+        </label>
+
         <input
           type="text"
           name="location"
@@ -362,27 +484,35 @@ const SignUp = () => {
           placeholder="City, Country"
           className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
           required
+          disabled={isSubmitting}
         />
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Profession</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Profession
+        </label>
+
         <select
           name="profession"
           value={formData.profession}
           onChange={handleInputChange}
           className="w-full px-4 py-3.5 bg-gray-50/70 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-blue-500"
           required
+          disabled={isSubmitting}
         >
           <option value="">Select your profession</option>
+
           {professions.map((prof) => (
-            <option key={prof} value={prof}>{prof}</option>
+            <option key={prof} value={prof}>
+              {prof}
+            </option>
           ))}
         </select>
       </div>
     </motion.div>
   );
 
-  // Render step 3: Complete (user type + photo)
   const renderStep3 = () => (
     <motion.div
       key="step3"
@@ -391,9 +521,11 @@ const SignUp = () => {
       exit={{ opacity: 0, x: -20 }}
       className="space-y-6"
     >
-      {/* User Type Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-4">I am a...</label>
+        <label className="block text-sm font-medium text-gray-700 mb-4">
+          I am a...
+        </label>
+
         <div className="grid grid-cols-2 gap-4">
           {userTypes.map((type) => (
             <motion.label
@@ -402,26 +534,39 @@ const SignUp = () => {
               whileTap={{ scale: 0.98 }}
               className={`flex flex-col items-center justify-center p-6 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${
                 formData.userType === type.id
-                  ? 'border-blue-500 bg-blue-50/50 shadow-lg shadow-blue-500/10'
-                  : 'border-gray-200 bg-gray-50/50 hover:border-blue-300'
+                  ? "border-blue-500 bg-blue-50/50 shadow-lg shadow-blue-500/10"
+                  : "border-gray-200 bg-gray-50/50 hover:border-blue-300"
               }`}
             >
               <input
                 type="radio"
                 name="userType"
                 value={type.id}
+                checked={formData.userType === type.id}
                 onChange={handleInputChange}
                 className="sr-only"
                 required
+                disabled={isSubmitting}
               />
-              <type.icon className={`text-2xl mb-3 ${
-                formData.userType === type.id ? 'text-blue-600' : 'text-gray-400'
-              }`} />
-              <span className={`font-semibold text-sm ${
-                formData.userType === type.id ? 'text-blue-600' : 'text-gray-600'
-              }`}>
+
+              <type.icon
+                className={`text-2xl mb-3 ${
+                  formData.userType === type.id
+                    ? "text-blue-600"
+                    : "text-gray-400"
+                }`}
+              />
+
+              <span
+                className={`font-semibold text-sm ${
+                  formData.userType === type.id
+                    ? "text-blue-600"
+                    : "text-gray-600"
+                }`}
+              >
                 {type.name}
               </span>
+
               <span className="text-xs text-gray-500 mt-1 text-center">
                 {type.description}
               </span>
@@ -430,9 +575,11 @@ const SignUp = () => {
         </div>
       </div>
 
-      {/* Photo Upload */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-4">Profile Photo (Optional)</label>
+        <label className="block text-sm font-medium text-gray-700 mb-4">
+          Profile Photo (Optional)
+        </label>
+
         <div className="flex items-center justify-center">
           <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-blue-400 transition-colors duration-300 group bg-gray-50/50 hover:bg-white/80 relative overflow-hidden">
             {formData.photoPreview ? (
@@ -442,11 +589,13 @@ const SignUp = () => {
                   alt="Profile preview"
                   className="w-full h-full object-cover rounded-2xl"
                 />
+
                 {uploading && (
                   <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center">
                     <FaSpinner className="text-white text-xl animate-spin" />
                   </div>
                 )}
+
                 {formData.cloudinaryUrl && !uploading && (
                   <div className="absolute bottom-1 right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                     <FaCheck className="text-white text-xs" />
@@ -460,75 +609,109 @@ const SignUp = () => {
                 ) : (
                   <FaUpload className="text-2xl mb-2" />
                 )}
+
                 <span className="text-xs">
-                  {uploading ? 'Uploading...' : 'Upload Photo'}
+                  {uploading ? "Uploading..." : "Upload Photo"}
                 </span>
               </div>
             )}
+
             <input
               type="file"
               name="profilePhoto"
               onChange={handleInputChange}
               accept="image/*"
               className="hidden"
-              disabled={uploading}
+              disabled={uploading || isSubmitting}
             />
           </label>
         </div>
+
         {uploading && (
-          <p className="text-xs text-blue-600 text-center mt-2">Uploading to Cloudinary...</p>
+          <p className="text-xs text-blue-600 text-center mt-2">
+            Uploading to Cloudinary...
+          </p>
         )}
       </div>
     </motion.div>
   );
 
-  // Render verification code screen
   const renderVerification = () => (
-    <motion.div
+    <motion.form
       key="verification"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      onSubmit={handleVerifyAndSignUp}
       className="space-y-6"
     >
       <div className="text-center mb-4">
-        <h3 className="text-xl font-semibold text-gray-900">Verify Your Email</h3>
+        <h3 className="text-xl font-semibold text-gray-900">
+          Verify Your Email
+        </h3>
+
         <p className="text-gray-600 text-sm mt-2">
-          We've sent a 6-digit verification code to <strong>{formData.email}</strong>
+          We've sent a 6-digit verification code to{" "}
+          <strong>{formData.email}</strong>
         </p>
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Verification Code</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Verification Code
+        </label>
+
         <input
           type="text"
           value={verificationCode}
-          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={(e) =>
+            setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+          }
           className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-center text-2xl tracking-widest font-mono focus:ring-2 focus:ring-blue-500"
           placeholder="000000"
           maxLength="6"
           required
+          disabled={isSubmitting}
         />
       </div>
+
       <button
-        onClick={handleVerifyAndSignUp}
-        className="w-full bg-blue-500 text-white py-4 rounded-2xl font-semibold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/25"
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full bg-blue-500 text-white py-4 rounded-2xl font-semibold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-70 flex items-center justify-center"
       >
-        Verify & Create Account
+        {isSubmitting ? (
+          <FaSpinner className="animate-spin" />
+        ) : (
+          "Verify & Create Account"
+        )}
       </button>
-      <div className="text-center">
+
+      <div className="text-center space-y-3">
         <button
+          type="button"
           onClick={resendCode}
-          disabled={countdown > 0}
+          disabled={countdown > 0 || isSubmitting}
           className="text-sm text-blue-600 hover:underline disabled:text-gray-400"
         >
           Resend code {countdown > 0 && `(${countdown}s)`}
         </button>
+
+        <br />
+
+        <button
+          type="button"
+          onClick={goBackToForm}
+          disabled={isSubmitting}
+          className="text-sm text-gray-600 hover:text-blue-600"
+        >
+          Change signup information
+        </button>
       </div>
-    </motion.div>
+    </motion.form>
   );
 
   return (
     <div className="w-full">
-      {/* Back Button */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -543,7 +726,6 @@ const SignUp = () => {
         </Link>
       </motion.div>
 
-      {/* Signup Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -553,34 +735,48 @@ const SignUp = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Join Creative Career AI
           </h2>
+
           <p className="text-gray-600">
-            {!verificationStep ? 'Create your account in just a few steps' : 'Verify your email to continue'}
+            {!verificationStep
+              ? "Create your account in just a few steps"
+              : "Verify your email to continue"}
           </p>
         </div>
 
         <ErrorMessage />
 
-        {/* Progress Steps (only if not in verification step) */}
         {!verificationStep && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               {steps.map((step, index) => (
                 <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all duration-300 ${
-                    currentStep >= step.number
-                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {currentStep > step.number ? <FaCheck className="text-xs" /> : step.number}
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all duration-300 ${
+                      currentStep >= step.number
+                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                        : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {currentStep > step.number ? (
+                      <FaCheck className="text-xs" />
+                    ) : (
+                      step.number
+                    )}
                   </div>
+
                   {index < steps.length - 1 && (
-                    <div className={`w-16 h-1 mx-2 transition-all duration-300 ${
-                      currentStep > step.number ? 'bg-blue-500' : 'bg-gray-200'
-                    }`} />
+                    <div
+                      className={`w-16 h-1 mx-2 transition-all duration-300 ${
+                        currentStep > step.number
+                          ? "bg-blue-500"
+                          : "bg-gray-200"
+                      }`}
+                    />
                   )}
                 </div>
               ))}
             </div>
+
             <div className="flex justify-between text-xs font-medium text-gray-500">
               {steps.map((step) => (
                 <span key={step.number}>{step.title}</span>
@@ -589,7 +785,6 @@ const SignUp = () => {
           </div>
         )}
 
-        {/* Form / Verification */}
         <AnimatePresence mode="wait">
           {!verificationStep ? (
             <motion.div key="form">
@@ -597,29 +792,44 @@ const SignUp = () => {
               {currentStep === 2 && renderStep2()}
               {currentStep === 3 && renderStep3()}
 
-              <div className={`flex space-x-4 mt-8 ${currentStep === 1 ? 'justify-end' : ''}`}>
+              <div
+                className={`flex space-x-4 mt-8 ${
+                  currentStep === 1 ? "justify-end" : ""
+                }`}
+              >
                 {currentStep > 1 && (
                   <motion.button
                     type="button"
                     onClick={prevStep}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex-1 bg-gray-100 text-gray-600 py-4 px-6 rounded-2xl text-base font-semibold hover:bg-gray-200 transition-all duration-200 border border-gray-200"
+                    disabled={uploading || isSubmitting}
+                    className="flex-1 bg-gray-100 text-gray-600 py-4 px-6 rounded-2xl text-base font-semibold hover:bg-gray-200 transition-all duration-200 border border-gray-200 disabled:opacity-70"
                   >
                     Back
                   </motion.button>
                 )}
+
                 <motion.button
                   type="button"
                   onClick={handleNext}
-                  whileHover={{ scale: 1.02, boxShadow: "0 20px 40px -10px rgba(59, 130, 246, 0.4)" }}
+                  whileHover={{
+                    scale: 1.02,
+                    boxShadow: "0 20px 40px -10px rgba(59, 130, 246, 0.4)",
+                  }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={uploading}
+                  disabled={uploading || isSubmitting}
                   className={`${
-                    currentStep > 1 ? 'flex-1' : 'w-full'
-                  } bg-blue-500 text-white py-4 px-6 rounded-2xl text-base font-semibold hover:shadow-xl transition-all duration-200 shadow-lg shadow-blue-500/25 disabled:opacity-50`}
+                    currentStep > 1 ? "flex-1" : "w-full"
+                  } bg-blue-500 text-white py-4 px-6 rounded-2xl text-base font-semibold hover:shadow-xl transition-all duration-200 shadow-lg shadow-blue-500/25 disabled:opacity-50 flex items-center justify-center`}
                 >
-                  {currentStep === 3 ? 'Complete Profile' : 'Continue'}
+                  {isSubmitting ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : currentStep === 3 ? (
+                    "Complete Profile"
+                  ) : (
+                    "Continue"
+                  )}
                 </motion.button>
               </div>
             </motion.div>
@@ -628,23 +838,27 @@ const SignUp = () => {
           )}
         </AnimatePresence>
 
-        {/* Social Signup - only show on step 1 and not in verification */}
         {!verificationStep && currentStep === 1 && (
           <>
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300/50"></div>
               </div>
+
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white/90 text-gray-500">Or sign up with</span>
+                <span className="px-4 bg-white/90 text-gray-500">
+                  Or sign up with
+                </span>
               </div>
             </div>
+
             <div className="grid grid-cols-1 gap-3">
               <motion.button
                 onClick={handleGoogleSignUp}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="py-3 px-4 rounded-2xl text-sm font-semibold flex items-center justify-center space-x-2 bg-white/50 backdrop-blur-sm border border-gray-200 hover:shadow-lg transition-all"
+                disabled={isSubmitting}
+                className="py-3 px-4 rounded-2xl text-sm font-semibold flex items-center justify-center space-x-2 bg-white/50 backdrop-blur-sm border border-gray-200 hover:shadow-lg transition-all disabled:opacity-70"
               >
                 <FaGoogle className="text-base" />
                 <span>Google</span>
@@ -653,11 +867,10 @@ const SignUp = () => {
           </>
         )}
 
-        {/* Login Link */}
         {!verificationStep && (
           <div className="text-center mt-8 pt-6 border-t border-gray-200/50">
             <p className="text-gray-600">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link
                 to="/auth/login"
                 className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200"

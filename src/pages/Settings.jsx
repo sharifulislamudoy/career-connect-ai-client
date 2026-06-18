@@ -36,6 +36,9 @@ const Settings = () => {
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const navigate = useNavigate();
 
+  // Check if user is admin or moderator
+  const isAdminOrModerator = userProfile?.role === 'admin' || userProfile?.role === 'moderator';
+
   // Form state
   const [formData, setFormData] = useState({
     // Personal Information
@@ -228,8 +231,8 @@ const Settings = () => {
 
   // Handle navigation away from settings
   const handleNavigation = (e, targetPath) => {
-    // Check if user is trying to navigate away from settings
-    if (!isProfileComplete) {
+    // Admin/Moderator can leave regardless of completion
+    if (!isProfileComplete && !isAdminOrModerator) {
       e.preventDefault();
       e.stopPropagation();
       toast.error('Please complete all required profile information before leaving this page');
@@ -241,7 +244,7 @@ const Settings = () => {
   // Check on page load if user can leave settings
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (!isProfileComplete) {
+      if (!isProfileComplete && !isAdminOrModerator) {
         e.preventDefault();
         e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
       }
@@ -249,7 +252,7 @@ const Settings = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isProfileComplete]);
+  }, [isProfileComplete, isAdminOrModerator]);
 
   // Cloudinary upload function
   const uploadToCloudinary = async (file, type) => {
@@ -1172,9 +1175,9 @@ const Settings = () => {
             {/* Home Button */}
             <button
               onClick={(e) => handleNavigation(e, '/')}
-              disabled={!isProfileComplete}
+              disabled={!isProfileComplete && !isAdminOrModerator}
               className={`flex items-center px-4 py-2 rounded-2xl font-medium transition-all duration-200 ${
-                isProfileComplete
+                isProfileComplete || isAdminOrModerator
                   ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/25'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
@@ -1184,8 +1187,8 @@ const Settings = () => {
             </button>
           </div>
           
-          {/* Completion Notice */}
-          {!isProfileComplete && (
+          {/* Completion Notice - hidden for admin/moderator */}
+          {!isProfileComplete && !isAdminOrModerator && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl">
               <div className="flex items-center text-yellow-800">
                 <FaExclamationTriangle className="mr-2" />

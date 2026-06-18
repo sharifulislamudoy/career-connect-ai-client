@@ -229,9 +229,17 @@ const MyJobs = () => {
                     <div className="flex-1 mb-4 md:mb-0">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-bold text-gray-900 text-lg">{job.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(job.status)}`}>
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(job.status)}`}>
+                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          </span>
+                          {/* Pending verification badge */}
+                          {job.licenseImage && !job.isVerified && (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                              Pending Verification
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="space-y-2">

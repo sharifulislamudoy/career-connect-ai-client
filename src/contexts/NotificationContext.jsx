@@ -1,19 +1,22 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthContext';
-import { io } from 'socket.io-client';
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import { io } from "socket.io-client";
+import toast from "react-hot-toast";
 
 const NotificationContext = createContext();
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within NotificationProvider');
+    throw new Error(
+      "useNotifications must be used within NotificationProvider"
+    );
   }
   return context;
 };
 
 export const NotificationProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, refreshUserProfile, logout } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,18 +41,31 @@ export const NotificationProvider = ({ children }) => {
   }, [user]);
 
   const setupSocket = () => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io("http://localhost:5000");
     setSocket(newSocket);
 
     // Listen for new notifications
-    newSocket.on('new-notification', (notification) => {
-      setNotifications(prev => [notification, ...prev]);
-      setUnreadCount(prev => prev + 1);
+    newSocket.on("new-notification", (notification) => {
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+
+      if (notification.type === "role_changed") {
+        toast.info(notification.message);
+        refreshUserProfile();
+      }
     });
 
     // Listen for notification count updates
-    newSocket.on('notification-count', (count) => {
+    newSocket.on("notification-count", (count) => {
       setUnreadCount(count);
+    });
+
+    // Listen for force logout (e.g., role change or account deletion)
+    newSocket.on("force-logout", (data) => {
+      toast.error(data.reason || "You have been logged out");
+      logout();
+      // Use window.location to navigate without router context
+      window.location.href = "/auth/login";
     });
 
     return () => newSocket.disconnect();
@@ -61,26 +77,24 @@ export const NotificationProvider = ({ children }) => {
       const queryParams = new URLSearchParams({
         limit: params.limit || 20,
         offset: params.offset || 0,
-        ...params
+        ...params,
       }).toString();
 
       const response = await fetch(
         `http://localhost:5000/api/notifications/user/${user.uid}?${queryParams}`
       );
       const data = await response.json();
-      
+
       if (data.success) {
         if (params.offset) {
-          // Load more
-          setNotifications(prev => [...prev, ...data.notifications]);
+          setNotifications((prev) => [...prev, ...data.notifications]);
         } else {
-          // Initial load
           setNotifications(data.notifications);
         }
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      console.error("Error loading notifications:", error);
     } finally {
       setLoading(false);
     }
@@ -91,34 +105,33 @@ export const NotificationProvider = ({ children }) => {
       const response = await fetch(
         `http://localhost:5000/api/notifications/mark-read/${notificationId}`,
         {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ userId: user.uid })
+          body: JSON.stringify({ userId: user.uid }),
         }
       );
 
       const data = await response.json();
-      
+
       if (data.success) {
-        setNotifications(prev =>
-          prev.map(notif =>
+        setNotifications((prev) =>
+          prev.map((notif) =>
             notif._id === notificationId ? { ...notif, read: true } : notif
           )
         );
         setUnreadCount(data.unreadCount);
-        
-        // Emit socket event
+
         if (socket) {
-          socket.emit('mark-notification-read', {
+          socket.emit("mark-notification-read", {
             notificationId,
-            userId: user.uid
+            userId: user.uid,
           });
         }
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
@@ -126,24 +139,23 @@ export const NotificationProvider = ({ children }) => {
     try {
       const response = await fetch(
         `http://localhost:5000/api/notifications/mark-all-read/${user.uid}`,
-        { method: 'PUT' }
+        { method: "PUT" }
       );
 
       const data = await response.json();
-      
+
       if (data.success) {
-        setNotifications(prev =>
-          prev.map(notif => ({ ...notif, read: true }))
+        setNotifications((prev) =>
+          prev.map((notif) => ({ ...notif, read: true }))
         );
         setUnreadCount(0);
-        
-        // Emit socket event
+
         if (socket) {
-          socket.emit('mark-all-notifications-read', { userId: user.uid });
+          socket.emit("mark-all-notifications-read", { userId: user.uid });
         }
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error("Error marking all notifications as read:", error);
     }
   };
 
@@ -152,22 +164,24 @@ export const NotificationProvider = ({ children }) => {
       const response = await fetch(
         `http://localhost:5000/api/notifications/${notificationId}`,
         {
-          method: 'DELETE',
+          method: "DELETE",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ userId: user.uid })
+          body: JSON.stringify({ userId: user.uid }),
         }
       );
 
       const data = await response.json();
-      
+
       if (data.success) {
-        setNotifications(prev => prev.filter(notif => notif._id !== notificationId));
+        setNotifications((prev) =>
+          prev.filter((notif) => notif._id !== notificationId)
+        );
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error("Error deleting notification:", error);
     }
   };
 
@@ -175,17 +189,17 @@ export const NotificationProvider = ({ children }) => {
     try {
       const response = await fetch(
         `http://localhost:5000/api/notifications/clear-all/${user.uid}`,
-        { method: 'DELETE' }
+        { method: "DELETE" }
       );
 
       const data = await response.json();
-      
+
       if (data.success) {
         setNotifications([]);
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error('Error clearing notifications:', error);
+      console.error("Error clearing notifications:", error);
     }
   };
 
@@ -202,7 +216,7 @@ export const NotificationProvider = ({ children }) => {
     deleteNotification,
     clearAllNotifications,
     refreshNotifications,
-    loadMore: (offset) => loadNotifications({ offset })
+    loadMore: (offset) => loadNotifications({ offset }),
   };
 
   return (
