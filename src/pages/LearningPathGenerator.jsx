@@ -1,3 +1,4 @@
+import { aiRequest } from '../lib/aiApi';
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -53,239 +54,20 @@ const LearningPathGenerator = () => {
         const duration = durationOptions.find(d => d.value === selectedDuration);
 
         try {
-            const response = await queryGroqAI(title, duration);
+            const response = await queryCareerAI(title, duration);
             setLearningPath(response);
             setStep(3);
         } catch (error) {
             console.error('Error generating learning path:', error);
-            alert('Failed to generate learning path. Please try again.');
+            alert(error.message || 'Failed to generate learning path. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const queryGroqAI = async (title, duration) => {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                messages: [
-                    {
-                        role: "system",
-                        content: `You are a learning path generator. Create a detailed, structured learning plan for a given career title and duration.
-
-                        Requirements:
-                        - Return ONLY valid JSON format
-                        - Structure: {
-                            "title": "Career Title",
-                            "duration": "Duration in days",
-                            "totalDays": number,
-                            "weeklySchedule": [
-                                {
-                                    "week": number,
-                                    "topics": string[],
-                                    "milestone": string,
-                                    "hoursRequired": number,
-                                    "tasks": string[]
-                                }
-                            ],
-                            "dailyTasks": [
-                                {
-                                    "day": number,
-                                    "task": string,
-                                    "topics": string[],
-                                    "resources": string[],
-                                    "completionTime": number
-                                }
-                            ],
-                            "milestones": [
-                                {
-                                    "week": number,
-                                    "title": string,
-                                    "description": string,
-                                    "tasks": string[],
-                                    "achieved": boolean
-                                }
-                            ],
-                            "skillBreakdown": [
-                                {
-                                    "skill": string,
-                                    "percentage": number,
-                                    "color": string
-                                }
-                            ],
-                            "progressData": [
-                                {
-                                    "day": number,
-                                    "progress": number,
-                                    "topicsCompleted": number
-                                }
-                            ]
-                        }
-
-                        Guidelines:
-                        - Each milestone MUST include specific tasks (3-5 tasks per milestone)
-                        - Make tasks actionable and measurable
-                        - Include practical projects and exercises
-                        - Balance theory and practice
-                        - Progress should be cumulative
-                        - Skill percentages should total 100%
-                        - Use realistic time commitments`
-                    },
-                    {
-                        role: "user",
-                        content: `Create a learning path for ${title} over ${duration.days} days (${duration.label}). Include specific tasks for each milestone.`
-                    }
-                ],
-                model: "llama-3.1-8b-instant",
-                temperature: 0.7,
-                max_tokens: 4096,
-                stream: false
-            })
-        });
-
-        const data = await response.json();
-        const content = data.choices[0].message.content;
-        
-        try {
-            return JSON.parse(content);
-        } catch (parseError) {
-            console.error('Error parsing JSON:', parseError);
-            return createFallbackPath(title, duration);
-        }
-    };
-
-    const createFallbackPath = (title, duration) => {
-        const days = duration.days;
-        const weeklySchedule = [];
-        const dailyTasks = [];
-        const milestones = [];
-        const progressData = [];
-        const skillBreakdown = [
-            { skill: 'Core Concepts', percentage: 30, color: '#8884d8' },
-            { skill: 'Practical Projects', percentage: 25, color: '#82ca9d' },
-            { skill: 'Tools & Technologies', percentage: 20, color: '#ffc658' },
-            { skill: 'Best Practices', percentage: 15, color: '#ff8042' },
-            { skill: 'Advanced Topics', percentage: 10, color: '#0088fe' }
-        ];
-
-        // Generate weekly schedule with tasks
-        for (let week = 1; week <= Math.ceil(days / 7); week++) {
-            weeklySchedule.push({
-                week,
-                topics: [`Week ${week} Topic 1`, `Week ${week} Topic 2`, `Week ${week} Topic 3`],
-                milestone: `Completed Week ${week} Milestone`,
-                hoursRequired: 15 + week * 2,
-                tasks: [
-                    `Complete ${week} practical exercises`,
-                    `Build a small project using week ${week} concepts`,
-                    `Review and refactor previous code`,
-                    `Prepare for week ${week + 1} topics`
-                ]
-            });
-        }
-
-        // Generate daily tasks
-        for (let day = 1; day <= days; day++) {
-            dailyTasks.push({
-                day,
-                task: `Day ${day} learning task for ${title}`,
-                topics: [`Topic A`, `Topic B`],
-                resources: ['Documentation', 'Online Tutorial', 'Practice Exercises'],
-                completionTime: 2 + (day % 3)
-            });
-        }
-
-        // Generate milestones with specific tasks
-        const milestoneData = [
-            {
-                week: 1,
-                title: "Foundation Setup",
-                description: "Establish basic understanding and setup development environment",
-                tasks: [
-                    "Set up development environment and tools",
-                    "Complete basic syntax and concepts tutorial",
-                    "Build a simple 'Hello World' application",
-                    "Create your first project repository"
-                ]
-            },
-            {
-                week: Math.floor(days / 21),
-                title: "Core Concepts Mastery",
-                description: "Master fundamental concepts and build intermediate projects",
-                tasks: [
-                    "Complete 5 practical coding exercises",
-                    "Build a functional intermediate project",
-                    "Participate in code review session",
-                    "Document your learning progress"
-                ]
-            },
-            {
-                week: Math.floor(days / 7),
-                title: "Advanced Implementation",
-                description: "Implement advanced features and optimize performance",
-                tasks: [
-                    "Optimize existing project performance",
-                    "Implement advanced features and APIs",
-                    "Write comprehensive unit tests",
-                    "Create project documentation"
-                ]
-            },
-            {
-                week: Math.floor(days / 3.5),
-                title: "Project Completion",
-                description: "Complete major project and prepare for deployment",
-                tasks: [
-                    "Finalize main project features",
-                    "Deploy project to production environment",
-                    "Perform thorough testing and debugging",
-                    "Create project presentation"
-                ]
-            },
-            {
-                week: Math.ceil(days / 7),
-                title: "Portfolio Ready",
-                description: "Polish skills and prepare for job applications",
-                tasks: [
-                    "Complete portfolio website",
-                    "Prepare resume with new skills",
-                    "Practice technical interviews",
-                    "Contribute to open source project"
-                ]
-            }
-        ];
-
-        milestoneData.forEach((milestone, index) => {
-            if (milestone.week <= Math.ceil(days / 7)) {
-                milestones.push({
-                    ...milestone,
-                    achieved: false
-                });
-            }
-        });
-
-        // Generate progress data
-        for (let day = 1; day <= days; day++) {
-            progressData.push({
-                day,
-                progress: Math.min(100, Math.round((day / days) * 100)),
-                topicsCompleted: Math.min(dailyTasks.length, day * 2)
-            });
-        }
-
-        return {
-            title,
-            duration: duration.label,
-            totalDays: days,
-            weeklySchedule,
-            dailyTasks,
-            milestones,
-            skillBreakdown,
-            progressData
-        };
+    const queryCareerAI = async (title, duration) => {
+        const data = await aiRequest('/learning-path', { title, days: duration.days });
+        return data.learningPath;
     };
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -295,7 +77,7 @@ const LearningPathGenerator = () => {
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <FaChartLine className="mr-2 text-blue-500" />
-                Learning Progress Over Time
+                Learning Progress (starts at zero)
             </h3>
             <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={learningPath.progressData}>

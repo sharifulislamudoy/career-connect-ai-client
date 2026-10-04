@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../lib/aiApi';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -53,7 +54,7 @@ const ResumeBuilder = () => {
     
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/resumes/user/${user.uid}`);
+      const response = await authenticatedFetch(`/api/resumes/user/${user.uid}`);
       const data = await response.json();
       setResumes(data);
     } catch (error) {
@@ -158,7 +159,7 @@ const ResumeBuilder = () => {
       
       const method = editingResumeId ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url.replace('http://localhost:5000', ''), {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -248,7 +249,7 @@ const ResumeBuilder = () => {
       showLoaderOnConfirm: true,
       preConfirm: async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/resumes/${id}`, {
+          const response = await authenticatedFetch(`/api/resumes/${id}`, {
             method: 'DELETE'
           });
           
@@ -304,7 +305,7 @@ const ResumeBuilder = () => {
         cancelButtonText: 'Cancel',
         showLoaderOnConfirm: true,
         preConfirm: async () => {
-          const response = await fetch('http://localhost:5000/api/resumes/generate-pdf', {
+          const response = await authenticatedFetch('/api/resumes/generate-pdf', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

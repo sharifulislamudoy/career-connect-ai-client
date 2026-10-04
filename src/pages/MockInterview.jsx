@@ -1,3 +1,4 @@
+import { aiRequest, API_BASE_URL } from '../lib/aiApi';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaMicrophone, FaMicrophoneSlash, FaPlay, FaStop, FaStar, FaClock, FaCheckCircle, FaExclamationTriangle, FaTimes } from 'react-icons/fa';
@@ -127,62 +128,6 @@ const MockInterview = () => {
         }
     };
 
-    const parseAIResponse = (text) => {
-        try {
-            const jsonMatch = text.match(/\[.*\]/s);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
-            }
-
-            const lines = text.split('\n').filter(line =>
-                line.trim() &&
-                !line.toLowerCase().includes('here are') &&
-                !line.toLowerCase().includes('interview questions') &&
-                line.match(/^\d+\.\s|^[-*]\s/)
-            );
-
-            if (lines.length > 0) {
-                return lines.slice(0, interviewConfig.questionCount).map((line, index) => {
-                    const cleanLine = line.replace(/^\d+\.\s|^[-*]\s/, '').trim();
-                    return {
-                        question: cleanLine,
-                        evaluationCriteria: [
-                            "Relevance to question",
-                            "Depth of knowledge",
-                            "Clarity of communication",
-                            "Practical examples",
-                            "Structure and organization"
-                        ]
-                    };
-                });
-            }
-
-            return Array.from({ length: interviewConfig.questionCount }, (_, i) => ({
-                question: `Tell me about ${interviewConfig.topic} and how you've used it in your projects?`,
-                evaluationCriteria: [
-                    "Relevance to question",
-                    "Depth of knowledge",
-                    "Clarity of communication",
-                    "Practical examples",
-                    "Structure and organization"
-                ]
-            }));
-
-        } catch (error) {
-            console.error('Error parsing AI response:', error);
-            return Array.from({ length: interviewConfig.questionCount }, (_, i) => ({
-                question: `Question ${i + 1} about ${interviewConfig.topic}?`,
-                evaluationCriteria: [
-                    "Relevance to question",
-                    "Depth of knowledge",
-                    "Clarity of communication",
-                    "Practical examples",
-                    "Structure and organization"
-                ]
-            }));
-        }
-    };
-
     const generateInterviewQuestions = async () => {
         if (!interviewConfig.topic.trim()) {
             setError('Please enter an interview topic');
@@ -193,54 +138,11 @@ const MockInterview = () => {
         setError('');
 
         try {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    messages: [
-                        {
-                            role: "system",
-                            content: `You are an expert interview coach. Generate ${interviewConfig.questionCount} interview questions about "${interviewConfig.topic}" at ${interviewConfig.difficulty} level.
-                            
-                            IMPORTANT: Return ONLY a JSON array of question objects. No additional text or explanations.
-                            
-                            Format:
-                            [
-                                {
-                                    "question": "Specific question text here",
-                                    "evaluationCriteria": ["criterion1", "criterion2", "criterion3", "criterion4", "criterion5"]
-                                }
-                            ]
-                            
-                            Make questions practical, relevant, and suitable for the difficulty level.`
-                        }
-                    ],
-                    model: "llama-3.1-8b-instant",
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                    stream: false
-                })
+            const data = await aiRequest('/interview/questions', {
+                topic: interviewConfig.topic, difficulty: interviewConfig.difficulty,
+                questionCount: interviewConfig.questionCount
             });
-
-            if (!response.ok) {
-                throw new Error(`API request failed with status ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                throw new Error('Invalid response format from AI');
-            }
-
-            const aiResponse = data.choices[0].message.content;
-            const questionsData = parseAIResponse(aiResponse);
-
-            if (!questionsData || !Array.isArray(questionsData) || questionsData.length === 0) {
-                throw new Error('Failed to generate valid questions');
-            }
+            const questionsData = data.questions;
 
             setQuestions(questionsData);
             setStep(2);
@@ -312,7 +214,7 @@ const MockInterview = () => {
 
     const handleUserAnswer = async (answer) => {
         const currentQuestion = questions[currentQuestionIndex];
-        if (!currentQuestion) return;
+        if (!currentQuestion || isLoading) return;
 
         const userAnswer = {
             question: currentQuestion.question,
@@ -321,17 +223,20 @@ const MockInterview = () => {
             evaluation: null
         };
 
-        setUserAnswers(prev => [...prev, userAnswer]);
-
-        // Evaluate the answer
-        await evaluateAnswer(currentQuestion.question, answer, currentQuestion.evaluationCriteria);
-
-        // Move to next question or finish
-        if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(prev => prev + 1);
-        } else {
-            finishInterview();
-        }
+        setIsLoading(true);
+        setError('');
+        try {
+            const evaluation = await evaluateAnswer(currentQuestion.question, answer, currentQuestion.evaluationCriteria);
+            const completedAnswers = [...userAnswers, { ...userAnswer, evaluation }];
+            setUserAnswers(completedAnswers);
+            if (currentQuestionIndex < questions.length - 1) {
+                setCurrentQuestionIndex(prev => prev + 1);
+            } else {
+                await finishInterview(completedAnswers);
+            }
+        } catch (error) {
+            setError(error.message || 'Evaluation failed. Please submit your answer again.');
+        } finally { setIsLoading(false); }
     };
 
     // Manual answer input with modal
@@ -352,99 +257,9 @@ const MockInterview = () => {
         }
     };
 
-    const parseEvaluationResponse = (text) => {
-        try {
-            const jsonMatch = text.match(/\{.*\}/s);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
-            }
-
-            return {
-                score: Math.floor(Math.random() * 6) + 5,
-                feedback: "This is an automated evaluation based on your response.",
-                strengths: ["Good attempt at answering the question"],
-                improvements: ["Provide more specific examples and details"]
-            };
-        } catch (error) {
-            console.error('Error parsing evaluation:', error);
-            return {
-                score: 6,
-                feedback: "Evaluation system temporarily unavailable.",
-                strengths: [],
-                improvements: []
-            };
-        }
-    };
-
     const evaluateAnswer = async (question, answer, criteria) => {
-        try {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    messages: [
-                        {
-                            role: "system",
-                            content: `You are an expert interview evaluator. Evaluate the user's answer based on: ${criteria.join(', ')}.
-                            
-                            IMPORTANT: Return ONLY a JSON object. No additional text.
-                            
-                            Format:
-                            {
-                                "score": number (0-10),
-                                "feedback": "constructive feedback string",
-                                "strengths": ["strength1", "strength2"],
-                                "improvements": ["improvement1", "improvement2"]
-                            }`
-                        },
-                        {
-                            role: "user",
-                            content: `Question: ${question}\nAnswer: ${answer}`
-                        }
-                    ],
-                    model: "llama-3.1-8b-instant",
-                    temperature: 0.7,
-                    max_tokens: 512,
-                    stream: false
-                })
-            });
-
-            const data = await response.json();
-            const evaluation = parseEvaluationResponse(data.choices[0].message.content);
-
-            setUserAnswers(prev => {
-                const updatedAnswers = [...prev];
-                const lastIndex = updatedAnswers.length - 1;
-                if (lastIndex >= 0) {
-                    updatedAnswers[lastIndex] = {
-                        ...updatedAnswers[lastIndex],
-                        evaluation
-                    };
-                }
-                return updatedAnswers;
-            });
-        } catch (error) {
-            console.error('Error evaluating answer:', error);
-            setUserAnswers(prev => {
-                const updatedAnswers = [...prev];
-                const lastIndex = updatedAnswers.length - 1;
-                if (lastIndex >= 0) {
-                    updatedAnswers[lastIndex] = {
-                        ...updatedAnswers[lastIndex],
-                        evaluation: {
-                            score: 6,
-                            feedback: "Evaluation temporarily unavailable.",
-                            strengths: [],
-                            improvements: []
-                        }
-                    };
-                }
-                return updatedAnswers;
-            });
-        }
+        const data = await aiRequest('/interview/evaluate', { question, answer, criteria });
+        return data.evaluation;
     };
 
     // Save interview results to database
@@ -468,7 +283,7 @@ const MockInterview = () => {
                 answers: results.answers
             };
 
-            const response = await fetch('http://localhost:5000/api/interviews/save', {
+            const response = await fetch(`${API_BASE_URL}/api/interviews/save`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -490,14 +305,14 @@ const MockInterview = () => {
         }
     };
 
-    const finishInterview = async () => {
-        const answersWithScores = userAnswers.filter(answer => answer.evaluation);
+    const finishInterview = async (completedAnswers = userAnswers) => {
+        const answersWithScores = completedAnswers.filter(answer => answer.evaluation);
         const totalScore = answersWithScores.reduce((sum, answer) => sum + (answer.evaluation?.score || 0), 0);
         const averageScore = answersWithScores.length > 0 ? totalScore / answersWithScores.length : 0;
 
         const results = {
             totalScore: averageScore,
-            answers: userAnswers,
+            answers: completedAnswers,
             summary: generateSummary(averageScore)
         };
 
@@ -884,7 +699,7 @@ const MockInterview = () => {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={finishInterview}
+                                    onClick={() => finishInterview()}
                                     className="w-full bg-gray-500 text-white py-3 rounded-2xl font-semibold hover:bg-gray-600 transition-colors duration-200"
                                 >
                                     Finish Interview
@@ -1068,7 +883,7 @@ const MockInterview = () => {
                                 </button>
                                 <button
                                     onClick={submitManualAnswer}
-                                    disabled={!manualAnswer.trim()}
+                                    disabled={!manualAnswer.trim() || isLoading}
                                     className="bg-blue-500 text-white px-6 py-2 rounded-2xl font-semibold hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Submit Answer

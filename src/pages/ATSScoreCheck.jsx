@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../lib/aiApi';
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,13 +42,12 @@ const ATSScoreCheck = () => {
 
     const formData = new FormData();
     formData.append('resume', file);
-    formData.append('userEmail', user.email);
     if (jobDescription) {
       formData.append('jobDescription', jobDescription);
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/ats/check-score', {
+      const response = await authenticatedFetch('/api/ats/check-score', {
         method: 'POST',
         body: formData,
       });
@@ -75,7 +75,7 @@ const ATSScoreCheck = () => {
     if (!user?.email) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/ats/history/${user.email}`);
+      const response = await authenticatedFetch(`/api/ats/history/${encodeURIComponent(user.email)}`);
       const data = await response.json();
 
       if (data.success) {
