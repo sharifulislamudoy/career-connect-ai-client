@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { apiFetch } from "../lib/api";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import {
   getAuth,
   signInWithPopup,
@@ -28,6 +29,7 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const authVersion = useRef(0);
 
   const auth = getAuth(app);
   const googleProvider = new GoogleAuthProvider();
@@ -94,7 +96,7 @@ export const AuthProvider = ({ children }) => {
 
   const saveUserToBackend = async (userData) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/users`,
         {
           method: "POST",
@@ -119,7 +121,7 @@ export const AuthProvider = ({ children }) => {
 
   const getUserFromBackend = async (uid) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/users/${uid}`
       );
 
@@ -135,7 +137,7 @@ export const AuthProvider = ({ children }) => {
       return result.user || null;
     } catch (error) {
       console.error("Error fetching user from backend:", error);
-      return null;
+      throw error;
     }
   };
 
@@ -145,7 +147,7 @@ export const AuthProvider = ({ children }) => {
     if (!cleanEmail) return false;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/check-email?email=${encodeURIComponent(
           cleanEmail
         )}`
@@ -176,7 +178,7 @@ export const AuthProvider = ({ children }) => {
 
   const sendVerificationCode = async (email, type, userData = null) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/send-code`,
         {
           method: "POST",
@@ -201,7 +203,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyCode = async (email, code, type) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/verify-code`,
         {
           method: "POST",
@@ -223,7 +225,7 @@ export const AuthProvider = ({ children }) => {
 
   const consumeVerificationCode = async (email, code, type) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/consume-code`,
         {
           method: "POST",
@@ -388,7 +390,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateUserProfile = async (uid, updateData) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/users/${uid}`,
         {
           method: "PUT",
@@ -411,7 +413,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const handleAuthStateChange = async (currentUser) => {
+    const version = ++authVersion.current;
     setUser(currentUser);
+    setUserProfile(null);
 
     if (currentUser) {
       try {
@@ -422,8 +426,10 @@ export const AuthProvider = ({ children }) => {
           profile = await saveUserToBackend(backendUserData);
         }
 
+        if (version !== authVersion.current) return;
         setUserProfile(profile);
       } catch (error) {
+        if (version !== authVersion.current) return;
         console.error("Error fetching user profile:", error);
         setUserProfile(null);
       }
@@ -431,7 +437,7 @@ export const AuthProvider = ({ children }) => {
       setUserProfile(null);
     }
 
-    setLoading(false);
+    if (version === authVersion.current) setLoading(false);
   };
 
   useEffect(() => {
@@ -459,7 +465,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <div role="status" className="min-h-screen flex items-center justify-center text-sm text-gray-500">Opening Creative Career AI…</div> : children}
     </AuthContext.Provider>
   );
 };

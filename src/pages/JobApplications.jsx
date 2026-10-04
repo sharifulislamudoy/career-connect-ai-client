@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { motion } from 'framer-motion';
@@ -42,7 +43,7 @@ const JobApplications = () => {
       setLoading(true);
       
       // Fetch job details
-      const jobResponse = await fetch(`http://localhost:5000/api/jobs/${id}`);
+      const jobResponse = await apiFetch(`${API_BASE_URL}/api/jobs/${id}`);
       const jobData = await jobResponse.json();
       
       if (jobData.success) {
@@ -55,8 +56,8 @@ const JobApplications = () => {
         }
         
         // Fetch applications for this job
-        const appsResponse = await fetch(
-          `http://localhost:5000/api/jobs/${id}/applications?recruiterId=${user.uid}`
+        const appsResponse = await apiFetch(
+          `${API_BASE_URL}/api/jobs/${id}/applications?recruiterId=${user.uid}`
         );
         const appsData = await appsResponse.json();
         
@@ -74,8 +75,8 @@ const JobApplications = () => {
 
   const handleStatusChange = async (applicationId, newStatus) => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/jobs/applications/${applicationId}/status`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/jobs/applications/${applicationId}/status`,
         {
           method: 'PUT',
           headers: {
@@ -158,7 +159,7 @@ const JobApplications = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fb] pt-20 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading applications...</p>
@@ -168,7 +169,7 @@ const JobApplications = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 pb-16">
+    <div className="min-h-screen bg-[#f5f7fb] pt-8 pb-12">
       <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div

@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaCheck, FaTimes, FaCrown, FaStar, FaRocket, FaGem, FaCalendarAlt, FaCreditCard, FaShieldAlt, FaSync } from 'react-icons/fa';
@@ -57,7 +58,7 @@ const PaymentModal = ({ isOpen, onClose, plan, billingCycle, user, onPaymentSucc
 
         try {
             // Create payment intent on backend
-            const response = await fetch('http://localhost:5000/api/payments/create-payment-intent', {
+            const response = await apiFetch(`${API_BASE_URL}/api/payments/create-payment-intent`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,7 +95,7 @@ const PaymentModal = ({ isOpen, onClose, plan, billingCycle, user, onPaymentSucc
                 setError(result.error.message);
             } else {
                 // Payment successful - confirm with backend
-                const confirmResponse = await fetch('http://localhost:5000/api/payments/confirm-payment', {
+                const confirmResponse = await apiFetch(`${API_BASE_URL}/api/payments/confirm-payment`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -230,7 +231,7 @@ const Payment = () => {
         const fetchUserData = async () => {
             if (user?.uid) {
                 try {
-                    const response = await fetch(`http://localhost:5000/api/users/${user.uid}`);
+                    const response = await apiFetch(`${API_BASE_URL}/api/users/${user.uid}`);
                     const data = await response.json();
                     if (data.success) {
                         setUserData(data.user);
@@ -341,7 +342,7 @@ const Payment = () => {
 
     const updateUserPackage = async (packageName) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/users/${user.uid}`, {
+            const response = await apiFetch(`${API_BASE_URL}/api/users/${user.uid}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -371,7 +372,7 @@ const Payment = () => {
         const fetchUserData = async () => {
             if (user?.uid) {
                 try {
-                    const response = await fetch(`http://localhost:5000/api/users/${user.uid}`);
+                    const response = await apiFetch(`${API_BASE_URL}/api/users/${user.uid}`);
                     const data = await response.json();
                     if (data.success) {
                         setUserData(data.user);
@@ -410,7 +411,7 @@ const Payment = () => {
 
     return (
         <Elements stripe={stripePromise}>
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12">
+            <div className="min-h-screen bg-[#f5f7fb] py-12">
                 <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Toast Notification */}
                     {toast.show && (

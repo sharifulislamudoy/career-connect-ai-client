@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 // src/pages/Settings.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -264,7 +265,7 @@ const Settings = () => {
       formData.append('upload_preset', 'react_unsigned');
       formData.append('cloud_name', 'dohhfubsa');
 
-      const response = await fetch(
+      const response = await apiFetch(
         `https://api.cloudinary.com/v1_1/dohhfubsa/image/upload`,
         {
           method: 'POST',
@@ -1139,7 +1140,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+    <div className="min-h-screen bg-[#f5f7fb] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div

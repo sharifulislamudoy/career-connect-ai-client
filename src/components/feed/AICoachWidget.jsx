@@ -1,207 +1,239 @@
-import { aiRequest } from '../../lib/aiApi';
-import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { FaRobot, FaPaperPlane, FaTimes } from 'react-icons/fa';
-import { Link } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+import { FaRobot, FaPaperPlane, FaTimes } from "react-icons/fa";
+import { useAuth } from "../../contexts/AuthContext";
+import { aiRequest } from "../../lib/aiApi";
 
-// Helper to parse markdown-style links [text](/path) into React Router Link components
-const parseMessageWithLinks = (text) => {
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+function renderMessage(text) {
   const parts = [];
+  const pattern = /\[([^\]]+)\]\(([^)]+)\)/g;
   let lastIndex = 0;
-  let match;
 
-  while ((match = linkRegex.exec(text)) !== null) {
-    const [fullMatch, linkText, linkPath] = match;
-    const index = match.index;
-
-    // Push preceding text
-    if (index > lastIndex) {
-      parts.push(text.substring(lastIndex, index));
+  for (const match of String(text).matchAll(pattern)) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
     }
 
-    // Push Link component
+    const path = match[2];
+
     parts.push(
       <Link
-        key={index}
-        to={/^\/(?!\/)/.test(linkPath) ? linkPath : '/jobs'}
-        className="text-blue-600 underline hover:text-blue-800 transition-colors"
+        key={match.index}
+        to={/^\/(?!\/)/.test(path) ? path : "/jobs"}
+        className="font-medium text-blue-600 underline"
       >
-        {linkText}
+        {match[1]}
       </Link>
     );
 
-    lastIndex = index + fullMatch.length;
+    lastIndex = match.index + match[0].length;
   }
 
-  // Push remaining text
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
+  parts.push(String(text).slice(lastIndex));
 
-  return parts.length > 0 ? parts : text;
-};
+  return parts;
+}
 
-const AICoachWidget = ({ onClose }) => {
-  const { user } = useAuth(); // Get current user from auth context
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Hi! I'm your AI Career Coach. I can help with interview tips, resume advice, or career guidance. What would you like to work on today?",
-      isBot: true,
-      timestamp: new Date(),
-      isTyping: false
-    }
-  ]);
+export default function AICoachWidget({ onClose }) {
+  const { user } = useAuth();
+  const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const chatContainerRef = useRef(null);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const scrollRef = useRef(null);
+  const requestRef = useRef(null);
+  const nextId = useRef(0);
 
   useEffect(() => {
-    const chatContainer = chatContainerRef.current;
-    if (chatContainer) {
-      setTimeout(() => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }, 100);
-    }
-  }, [messages, isLoading]);
+    requestRef.current?.abort();
+    requestRef.current = null;
 
-  useEffect(() => {
     setConversationId(null);
-    setMessages([{ id: Date.now(), text: 'Ask me about your profile, resume, or matching jobs.', isBot: true, timestamp: new Date(), isTyping: false }]);
+    setInput("");
+    setLoading(false);
+    setMessages([
+      {
+        id: ++nextId.current,
+        text: "Ask me about your profile, resume, interviews, or matching jobs.",
+        isBot: true,
+      },
+    ]);
+
+    return () => requestRef.current?.abort();
   }, [user?.uid]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    const message = inputMessage.trim();
-    if (!message || isLoading) return;
-    setMessages(prev => [...prev, { id: Date.now(), text: message, isBot: false, timestamp: new Date(), isTyping: false }]);
-    setInputMessage('');
-    setIsLoading(true);
+  useEffect(() => {
+    const container = scrollRef.current;
+
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [messages, loading]);
+
+  const handleSend = async (event) => {
+    event.preventDefault();
+
+    const message = input.trim();
+
+    if (!message || !user || requestRef.current) return;
+
+    const controller = new AbortController();
+    requestRef.current = controller;
+
+    setMessages((previous) => [
+      ...previous,
+      {
+        id: ++nextId.current,
+        text: message,
+        isBot: false,
+      },
+    ]);
+
+    setInput("");
+    setLoading(true);
+
     try {
-      const data = await aiRequest('/chat', { message, conversationId });
-      setConversationId(data.conversationId);
-      const links = data.recommendations.map(job => `[${job.title} — ${job.company}](${job.link})`).join('\n');
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: data.reply + (links ? '\n\nMatching jobs:\n' + links : ''), isBot: true, timestamp: new Date(), isTyping: false }]);
+      const data = await aiRequest(
+        "/chat",
+        { message, conversationId },
+        controller.signal
+      );
+
+      if (controller.signal.aborted) return;
+
+      setConversationId(data.conversationId || null);
+
+      const recommendations = Array.isArray(data.recommendations)
+        ? data.recommendations
+        : [];
+
+      const links = recommendations
+        .map(
+          (job) =>
+            `[${job.title || "View job"} — ${
+              job.company || "Company"
+            }](${job.link || "/jobs"})`
+        )
+        .join("\n");
+
+      const reply = data.reply || "Please try asking your question again.";
+
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: ++nextId.current,
+          text: reply + (links ? `\n\nMatching jobs:\n${links}` : ""),
+          isBot: true,
+        },
+      ]);
     } catch (error) {
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: error.message, isBot: true, timestamp: new Date(), isTyping: false }]);
-    } finally { setIsLoading(false); }
+      if (controller.signal.aborted) return;
+
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: ++nextId.current,
+          text: error.message || "Could not reach your coach. Please try again.",
+          isBot: true,
+        },
+      ]);
+    } finally {
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setLoading(false);
+      }
+    }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-2xl shadow-lg border border-gray-200 h-[600px] flex flex-col sticky inset-0 top-23"
-    >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white/20 p-2 rounded-xl">
-              <FaRobot className="text-white text-xl" />
-            </div>
-            <div>
-              <h3 className="text-white font-bold">AI Career Coach</h3>
-              <p className="text-blue-100 text-xs">Powered by your profile and live jobs</p>
-            </div>
+    <section className="flex h-[600px] max-h-[80dvh] min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <header className="flex items-center justify-between gap-3 bg-gradient-to-r from-blue-600 to-violet-600 p-4 text-white">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-white/15 p-3">
+            <FaRobot aria-hidden="true" />
           </div>
-          <button
-            onClick={onClose}
-            className="lg:hidden text-white/80 hover:text-white p-1"
-          >
-            <FaTimes className="text-sm" />
-          </button>
-        </div>
-      </div>
 
-      {/* Messages */}
+          <div>
+            <h2 className="text-sm font-bold">AI Career Coach</h2>
+            <p className="mt-1 text-xs text-blue-100">
+              Guidance for your next step
+            </p>
+          </div>
+        </div>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close career coach"
+            className="rounded-lg p-2 hover:bg-white/15"
+          >
+            <FaTimes />
+          </button>
+        )}
+      </header>
+
       <div
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/30 scrollbar-thin"
+        ref={scrollRef}
+        role="log"
+        aria-label="Career coach conversation"
+        aria-live="polite"
+        aria-relevant="additions"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-gray-50/50 p-4"
       >
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+            className={`flex ${
+              message.isBot ? "justify-start" : "justify-end"
+            }`}
           >
             <div
-              className={`max-w-[85%] p-3 rounded-2xl ${
+              className={`max-w-[90%] whitespace-pre-wrap break-words rounded-2xl p-3 text-sm leading-relaxed ${
                 message.isBot
-                  ? 'bg-white border border-gray-200 rounded-tl-none'
-                  : 'bg-blue-500 text-white rounded-br-none'
+                  ? "rounded-tl-none border border-gray-200 bg-white text-gray-700"
+                  : "rounded-br-none bg-blue-600 text-white"
               }`}
             >
-              <div className="text-sm leading-relaxed">
-                {message.isBot ? (
-                  // Render bot message with parsed links
-                  <div>
-                    {Array.isArray(parseMessageWithLinks(message.text))
-                      ? parseMessageWithLinks(message.text).map((part, idx) =>
-                          typeof part === 'string' ? (
-                            <span key={idx}>{part}</span>
-                          ) : (
-                            <React.Fragment key={idx}>{part}</React.Fragment>
-                          )
-                        )
-                      : message.text}
-                    {message.isTyping && (
-                      <span className="inline-block w-1.5 h-3 bg-current ml-0.5 animate-pulse"></span>
-                    )}
-                  </div>
-                ) : (
-                  // User message as plain text
-                  <>
-                    {message.text}
-                    {message.isTyping && (
-                      <span className="inline-block w-1.5 h-3 bg-current ml-0.5 animate-pulse"></span>
-                    )}
-                  </>
-                )}
-              </div>
-              <p className={`text-xs mt-1 ${message.isBot ? 'text-gray-500' : 'text-blue-100'}`}>
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+              {message.isBot
+                ? renderMessage(message.text)
+                : message.text}
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3">
-              <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></div>
-                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              </div>
-            </div>
-          </div>
+
+        {loading && (
+          <p role="status" className="text-xs text-gray-500">
+            Your coach is thinking…
+          </p>
         )}
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 bg-white">
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Ask your career question..."
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !inputMessage.trim()}
-            className="bg-blue-500 text-white py-2 px-4 rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <FaPaperPlane className="text-xs" />
-          </button>
-        </div>
-      </form>
-    </motion.div>
-  );
-};
+      <form
+        onSubmit={handleSend}
+        className="flex gap-2 border-t border-gray-100 bg-white p-3"
+      >
+        <input
+          type="text"
+          aria-label="Your career question"
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Ask your career question…"
+          maxLength={4000}
+          disabled={!user || loading}
+          className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
 
-export default AICoachWidget;
+        <button
+          type="submit"
+          aria-label="Send question"
+          disabled={!user || loading || !input.trim()}
+          className="shrink-0 rounded-xl bg-blue-600 px-4 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <FaPaperPlane aria-hidden="true" />
+        </button>
+      </form>
+    </section>
+  );
+}

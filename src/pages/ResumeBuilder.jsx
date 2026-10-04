@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import { authenticatedFetch } from '../lib/aiApi';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -154,12 +155,12 @@ const ResumeBuilder = () => {
       setSaving(true);
       
       const url = editingResumeId 
-        ? `http://localhost:5000/api/resumes/${editingResumeId}`
-        : 'http://localhost:5000/api/resumes';
+        ? `${API_BASE_URL}/api/resumes/${editingResumeId}`
+        : `${API_BASE_URL}/api/resumes`;
       
       const method = editingResumeId ? 'PUT' : 'POST';
       
-      const response = await authenticatedFetch(url.replace('http://localhost:5000', ''), {
+      const response = await authenticatedFetch(url.replace(`${API_BASE_URL}`, ''), {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -396,7 +397,7 @@ const ResumeBuilder = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
+    <div className="min-h-screen bg-[#f5f7fb] p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div

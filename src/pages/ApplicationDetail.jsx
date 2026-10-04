@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { motion } from 'framer-motion';
@@ -37,8 +38,8 @@ const ApplicationDetail = () => {
   const fetchApplication = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `http://localhost:5000/api/jobs/applications/${id}?userId=${user.uid}&userType=${user.userType}`
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/jobs/applications/${id}?userId=${user.uid}&userType=${user.userType}`
       );
       const data = await response.json();
       
@@ -100,7 +101,7 @@ const ApplicationDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fb] pt-20 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading application details...</p>
@@ -111,7 +112,7 @@ const ApplicationDetail = () => {
 
   if (!application) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fb] pt-20 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-3">Application Not Found</h2>
           <p className="text-gray-600 mb-6">The application you're looking for doesn't exist.</p>
@@ -127,7 +128,7 @@ const ApplicationDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 pb-16">
+    <div className="min-h-screen bg-[#f5f7fb] pt-8 pb-12">
       <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
         {/* Back Button */}
         <motion.button
@@ -146,7 +147,7 @@ const ApplicationDetail = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8"
+              className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-8"
             >
               {/* Application Header */}
               <div className="flex items-start justify-between mb-8">
@@ -250,7 +251,7 @@ const ApplicationDetail = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 sticky top-24"
+              className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sticky top-24"
             >
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Details</h2>
               

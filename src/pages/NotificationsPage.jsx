@@ -149,7 +149,7 @@ const NotificationsPage = () => {
 
   if (loading && notifications.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fb]/30 flex items-center justify-center">
         <div className="text-center">
           <FaBell className="animate-pulse text-4xl text-blue-500 mb-4" />
           <p className="text-gray-600">Loading notifications...</p>
@@ -159,7 +159,7 @@ const NotificationsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 py-8">
+    <div className="min-h-screen bg-[#f5f7fb]/30 py-8">
       <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
         {/* Header */}
         <motion.div

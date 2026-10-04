@@ -1,5 +1,6 @@
+import { apiFetch } from "../../lib/api";
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaGoogle,
@@ -52,14 +53,17 @@ const SignUp = () => {
   } = useAuth();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedPath = location.state?.from;
+  const returnTo = requestedPath?.pathname?.startsWith("/") && !requestedPath.pathname.startsWith("//") && !requestedPath.pathname.startsWith("/auth") ? `${requestedPath.pathname}${requestedPath.search || ""}${requestedPath.hash || ""}` : "/";
 
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dohhfubsa";
   const uploadPreset =
     import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "react_unsigned";
 
   useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
+    if (user) navigate(returnTo, { replace: true });
+  }, [user, navigate, returnTo]);
 
   useEffect(() => {
     return () => clearError();
@@ -121,7 +125,7 @@ const SignUp = () => {
       formDataUpload.append("upload_preset", uploadPreset);
       formDataUpload.append("cloud_name", cloudName);
 
-      const response = await fetch(
+      const response = await apiFetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
         {
           method: "POST",
@@ -295,7 +299,7 @@ const SignUp = () => {
       }
 
       toast.success("Account created successfully! Please complete your profile.");
-      navigate("/settings");
+      navigate(returnTo, { replace: true });
     } catch (err) {
       toast.error(err.message || "Verification failed");
     } finally {
@@ -330,7 +334,7 @@ const SignUp = () => {
     try {
       await signInWithGoogle();
       toast.success("Signed up successfully!");
-      navigate("/settings");
+      navigate(returnTo, { replace: true });
     } catch (err) {
       toast.error(err.message || "Google sign up failed");
     } finally {
@@ -872,7 +876,7 @@ const SignUp = () => {
             <p className="text-gray-600">
               Already have an account?{" "}
               <Link
-                to="/auth/login"
+                to="/auth/login" state={location.state}
                 className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200"
               >
                 Sign in

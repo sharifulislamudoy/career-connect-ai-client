@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { aiRequest, API_BASE_URL } from '../lib/aiApi';
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -283,7 +284,7 @@ const MockInterview = () => {
                 answers: results.answers
             };
 
-            const response = await fetch(`${API_BASE_URL}/api/interviews/save`, {
+            const response = await apiFetch(`${API_BASE_URL}/api/interviews/save`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -342,7 +343,7 @@ const MockInterview = () => {
     const currentQuestion = questions[currentQuestionIndex];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+        <div className="min-h-screen bg-[#f5f7fb] py-8">
             <div className="w-11/12 mx-auto px-4 lg:px-8">
                 {/* Browser Support Warning */}
                 {(!browserSupport.speechRecognition || !browserSupport.speechSynthesis) && (

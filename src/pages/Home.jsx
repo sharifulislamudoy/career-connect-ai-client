@@ -1,15 +1,20 @@
-import React from 'react';
-import HeroSection from '../components/HeroSection';
-import FeedSection from '../components/feed/FeedSection';
-import { useAuth } from '../contexts/AuthContext';
+import HeroSection from "../components/HeroSection";
+import FeedSection from "../components/feed/FeedSection";
+import { useAuth } from "../contexts/AuthContext";
 
-const Home = () => {
-    const { user } = useAuth()
+export default function Home() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
     return (
-        <div>
-            {user ? <FeedSection /> : <HeroSection/>}
-        </div>
+      <div
+        role="status"
+        className="min-h-[60vh] flex items-center justify-center text-sm text-gray-500"
+      >
+        Opening your workspace…
+      </div>
     );
-};
+  }
 
-export default Home;
+  return user ? <FeedSection /> : <HeroSection />;
+}

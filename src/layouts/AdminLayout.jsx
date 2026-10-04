@@ -1,96 +1,126 @@
-import React from "react";
-import { Outlet, NavLink, useNavigate } from "react-router";
-import { motion } from "framer-motion";
-import { FaUsers, FaCog, FaSignOutAlt, FaTachometerAlt, FaBriefcase } from "react-icons/fa";
+import { Outlet, NavLink, Link, useNavigate } from "react-router";
+import {
+  FaUsers,
+  FaSignOutAlt,
+  FaTachometerAlt,
+  FaBriefcase,
+} from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
+import toast from "react-hot-toast";
 
-const AdminLayout = () => {
+const sidebarItems = [
+  {
+    path: "/admin/dashboard",
+    name: "Dashboard",
+    icon: FaTachometerAlt,
+  },
+  {
+    path: "/admin/users",
+    name: "Users",
+    icon: FaUsers,
+  },
+  {
+    path: "/admin/jobs",
+    name: "Verify Jobs",
+    icon: FaBriefcase,
+  },
+];
+
+export default function AdminLayout() {
   const { userProfile, logout } = useAuth();
   const navigate = useNavigate();
 
-  const sidebarItems = [
-    { path: "/admin/dashboard", name: "Dashboard", icon: FaTachometerAlt },
-    { path: "/admin/users", name: "Users", icon: FaUsers },
-    { path: "/admin/jobs", name: "Verify Jobs", icon: FaBriefcase }, // new
-  ];
-
   const handleLogout = async () => {
-    await logout();
-    navigate("/");
+    try {
+      await logout();
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast.error(error.message || "Could not sign out. Please try again.");
+    }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar - 1/4 width */}
-      <aside className="w-1/4 bg-white shadow-lg border-r border-gray-200/50 fixed top-0 left-0 h-full overflow-y-auto z-40">
-        <div className="p-6">
-          {/* Brand */}
-          <div className="flex items-center space-x-3 mb-8">
-            <img src="/Logo.png" alt="Logo" className="h-10 w-10" />
-            <div>
-              <h1 className="text-xl font-bold text-blue-500">Admin</h1>
-              <span className="text-xs text-gray-500">Dashboard</span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 lg:flex">
+      <aside className="border-b border-gray-200 bg-white lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <div className="p-4 sm:p-6">
+          <Link to="/" className="mb-6 flex items-center gap-3">
+            <img
+              src="/Logo.png"
+              alt="Creative Career AI"
+              className="h-10 w-10 object-contain"
+            />
 
-          {/* User Info */}
-          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-2xl mb-6">
+            <div>
+              <p className="text-lg font-bold text-blue-600">
+                Career AI
+              </p>
+              <p className="text-xs text-gray-500">
+                Admin workspace
+              </p>
+            </div>
+          </Link>
+
+          <div className="mb-6 flex items-center gap-3 rounded-xl bg-blue-50 p-3">
             <img
               src={userProfile?.photoURL || "/default-avatar.png"}
-              alt="Profile"
-              className="w-10 h-10 rounded-full object-cover"
+              alt=""
+              className="h-10 w-10 rounded-full object-cover"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = "/default-avatar.png";
+              }}
             />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-800 truncate">
-                {userProfile?.displayName || "User"}
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-gray-800">
+                {userProfile?.displayName || "Your account"}
               </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {userProfile?.userType}
+              <p className="text-xs capitalize text-gray-500">
+                {userProfile?.userType || "Staff"}
               </p>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="space-y-2">
+          <nav
+            aria-label="Admin navigation"
+            className="flex flex-wrap gap-2 lg:flex-col"
+          >
             {sidebarItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ${
+                  `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-blue-50 text-blue-600 border border-blue-200/50"
+                      ? "bg-blue-50 text-blue-700"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`
                 }
               >
-                <item.icon className="text-lg" />
+                <item.icon aria-hidden="true" />
                 <span>{item.name}</span>
               </NavLink>
             ))}
           </nav>
 
-          {/* Logout */}
-          <div className="mt-8 pt-6 border-t border-gray-200/50">
+          <div className="mt-6 border-t border-gray-100 pt-4">
             <button
+              type="button"
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200"
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
             >
-              <FaSignOutAlt />
-              <span>Logout</span>
+              <FaSignOutAlt aria-hidden="true" />
+              Sign out
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content - 3/4 width */}
-      <main className="ml-[25%] w-3/4 p-8 min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:ml-64 lg:p-8">
+        <div className="mx-auto max-w-7xl">
           <Outlet />
         </div>
       </main>
     </div>
   );
-};
-
-export default AdminLayout;
+}

@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
@@ -62,7 +63,7 @@ const PostJob = () => {
     formData.append('upload_preset', uploadPreset);
 
     try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      const res = await apiFetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: formData
       });
@@ -90,7 +91,7 @@ const PostJob = () => {
         recruiterId: user.uid
       };
 
-      const response = await fetch('http://localhost:5000/api/jobs', {
+      const response = await apiFetch(`${API_BASE_URL}/api/jobs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,7 +115,7 @@ const PostJob = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 pb-16">
+    <div className="min-h-screen bg-[#f5f7fb] pt-8 pb-12">
       <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
         {/* Header */}
         <motion.div
@@ -135,7 +136,7 @@ const PostJob = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8"
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}

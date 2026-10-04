@@ -1,32 +1,34 @@
+import { lazy } from "react";
+const NotificationsPage = lazy(() => import("../pages/NotificationsPage"));
 import { createBrowserRouter } from "react-router";
 import { Navigate } from "react-router";
 import Main from "../layouts/Main";
 import Home from "../pages/Home";
-import Login from "../components/auth/Login";
-import SignUp from "../components/auth/Signup";
+const Login = lazy(() => import("../components/auth/Login"));
+const SignUp = lazy(() => import("../components/auth/Signup"));
 import Auth from "../layouts/Auth";
-import Payment from "../pages/Payment";
-import ATSScoreCheck from "../pages/ATSScoreCheck";
-import Settings from "../pages/Settings";
-import MockInterview from "../pages/MockInterview";
-import LearningPathGenerator from "../pages/LearningPathGenerator";
-import Jobs from "../pages/Jobs";
-import JobDetail from "../pages/JobDetail";
-import PostJob from "../pages/PostJob";
-import MyJobs from "../pages/MyJobs";
-import MyApplications from "../pages/MyApplications";
-import JobApplications from "../pages/JobApplications";
-import EditJob from "../pages/EditJob";
-import Network from "../pages/Network";
-import Messages from "../pages/Messages";
-import ResumeBuilder from "../pages/ResumeBuilder";
+const Payment = lazy(() => import("../pages/Payment"));
+const ATSScoreCheck = lazy(() => import("../pages/ATSScoreCheck"));
+const Settings = lazy(() => import("../pages/Settings"));
+const MockInterview = lazy(() => import("../pages/MockInterview"));
+const LearningPathGenerator = lazy(() => import("../pages/LearningPathGenerator"));
+const Jobs = lazy(() => import("../pages/Jobs"));
+const JobDetail = lazy(() => import("../pages/JobDetail"));
+const PostJob = lazy(() => import("../pages/PostJob"));
+const MyJobs = lazy(() => import("../pages/MyJobs"));
+const MyApplications = lazy(() => import("../pages/MyApplications"));
+const JobApplications = lazy(() => import("../pages/JobApplications"));
+const EditJob = lazy(() => import("../pages/EditJob"));
+const Network = lazy(() => import("../pages/Network"));
+const Messages = lazy(() => import("../pages/Messages"));
+const ResumeBuilder = lazy(() => import("../pages/ResumeBuilder"));
 import ProtectedRoute from "../components/ProtectedRoute";
 
 // Admin components
-import AdminLayout from "../layouts/AdminLayout";
-import AdminUsers from "../pages/AdminUsers";
-import AdminDashboard from "../pages/AdminDashboard";
-import AdminJobs from "../pages/AdminJobs"; // new
+const AdminLayout = lazy(() => import("../layouts/AdminLayout"));
+const AdminUsers = lazy(() => import("../pages/AdminUsers"));
+const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
+const AdminJobs = lazy(() => import("../pages/AdminJobs")); // new
 import ModeratorRoute from "../components/ModeratorRoute";
 
 export const router = createBrowserRouter([
@@ -34,6 +36,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Main,
     children: [
+      { path: "/notifications", element: <ProtectedRoute><NotificationsPage /></ProtectedRoute> },
       {
         index: true,
         Component: Home,

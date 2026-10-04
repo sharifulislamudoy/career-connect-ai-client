@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
@@ -25,8 +26,8 @@ const AdminDashboard = () => {
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `http://localhost:5000/api/admin/dashboard`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/admin/dashboard`,
         {
           headers: {
             "x-user-id": user.uid,

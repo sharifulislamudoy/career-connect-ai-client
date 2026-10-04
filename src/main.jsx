@@ -1,5 +1,5 @@
 // src/main.jsx
-import { StrictMode } from 'react'
+import { StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { router } from './router/routes'
@@ -17,7 +17,7 @@ createRoot(document.getElementById('root')).render(
     <AuthProvider>
       <SocketProvider>
         <NotificationProvider>
-          <RouterProvider router={router} />
+          <Suspense fallback={<div role="status" className="min-h-[60vh] flex items-center justify-center text-sm text-gray-500">Opening your workspace…</div>}><RouterProvider router={router} /></Suspense>
           <Toaster 
             position="top-right"
             toastOptions={{

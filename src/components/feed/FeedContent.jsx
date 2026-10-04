@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../../lib/api";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -46,7 +47,7 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
         formData.append('upload_preset', uploadPreset);
         formData.append('cloud_name', cloudName);
 
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        const res = await apiFetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
             method: 'POST',
             body: formData,
         });
@@ -81,7 +82,7 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
 
         setActionLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/posts', {
+            const res = await apiFetch(`${API_BASE_URL}/api/posts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -97,6 +98,7 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
                 }),
             });
             const result = await res.json();
+            if (!res.ok || !result.success) throw new Error(result.message || "Please try again");
             if (result.success) {
                 onSuccess(result.post);
                 onClose();
@@ -241,52 +243,56 @@ const FeedContent = () => {
     const { user, userProfile } = useAuth();
 
     // UPDATED: fetchPosts with userId query parameter
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async (signal) => {
         try {
             setLoading(true);
-            let url = 'http://localhost:5000/api/posts';
+            let url = `${API_BASE_URL}/api/posts`;
             if (user) {
                 url += `?userId=${user.uid}`;
             }
-            const res = await fetch(url);
+            setError(null);
+            const res = await apiFetch(url, { signal });
             const result = await res.json();
-            if (result.success) {
-                setPosts(result.posts || []);
-            }
+            if (!res.ok || !result.success) throw new Error(result.message || "Failed to load posts");
+            setPosts(result.posts || []);
         } catch (err) {
-            setError('Failed to load posts');
+            if (err.name !== 'AbortError') setError(err.message || 'Failed to load posts');
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
-    };
+    }, [user?.uid]);
 
     useEffect(() => {
-        fetchPosts();
-    }, []);
+        const controller = new AbortController();
+        fetchPosts(controller.signal);
+        return () => controller.abort();
+    }, [fetchPosts]);
 
     const handleLike = async (postId) => {
         if (!user) return setError('Login required');
+        if (actionLoading) return;
         setActionLoading(`like-${postId}`);
         try {
-            const res = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+            const res = await apiFetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.uid, userEmail: user.email }),
             });
             const result = await res.json();
+            if (!res.ok || !result.success) throw new Error(result.message || "Please try again");
             if (result.success) {
                 setPosts(prev => prev.map(p => p._id === postId ? result.post : p));
             }
-        } catch (err) { } finally {
+        } catch (err) { setError(err.message || "Something went wrong. Please try again."); } finally {
             setActionLoading(null);
         }
     };
 
     const handleAddComment = async (postId) => {
-        if (!commentText.trim() || !user) return;
+        if (!commentText.trim() || !user || actionLoading) return;
         setActionLoading(`comment-${postId}`);
         try {
-            const res = await fetch(`http://localhost:5000/api/posts/${postId}/comment`, {
+            const res = await apiFetch(`${API_BASE_URL}/api/posts/${postId}/comment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -301,11 +307,13 @@ const FeedContent = () => {
                 }),
             });
             const result = await res.json();
+            if (!res.ok || !result.success) throw new Error(result.message || "Please try again");
             if (result.success) {
                 setPosts(prev => prev.map(p => p._id === postId ? result.post : p));
                 setCommentText('');
+                setSelectedPost(result.post);
             }
-        } catch (err) { } finally {
+        } catch (err) { setError(err.message || "Something went wrong. Please try again."); } finally {
             setActionLoading(null);
         }
     };
@@ -314,13 +322,15 @@ const FeedContent = () => {
         if (!window.confirm('Delete this post?')) return;
         setActionLoading(`delete-${postId}`);
         try {
-            await fetch(`http://localhost:5000/api/posts/${postId}`, {
+            const response = await apiFetch(`${API_BASE_URL}/api/posts/${postId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user?.uid }),
             });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || "Could not delete post");
             setPosts(prev => prev.filter(p => p._id !== postId));
-        } catch (err) { } finally {
+        } catch (err) { setError(err.message || "Something went wrong. Please try again."); } finally {
             setActionLoading(null);
         }
     };
@@ -341,10 +351,11 @@ const FeedContent = () => {
         } catch { return 'Recently'; }
     };
 
-    const Post = ({ post }) => (
+    const renderPost = (post) => (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            key={post._id}
             className="bg-white rounded-2xl shadow-sm border border-gray-200/80 mb-6 overflow-hidden hover:shadow-md transition-all duration-300"
         >
             <div className="p-6 pb-4">
@@ -425,7 +436,7 @@ const FeedContent = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
+        <div className="min-w-0">
             <div className="max-w-2xl mx-auto  ">
 
                 {error && (
@@ -434,7 +445,7 @@ const FeedContent = () => {
                             <FaExclamationCircle className="text-red-500" />
                             <p className="text-red-800 text-sm">{error}</p>
                         </div>
-                        <button onClick={() => setError(null)}><FaTimes className="text-red-500" /></button>
+                        <button onClick={() => fetchPosts()} className="text-sm font-semibold text-red-700">Retry</button><button aria-label="Dismiss error" onClick={() => setError(null)}><FaTimes className="text-red-500" /></button>
                     </div>
                 )}
 
@@ -486,7 +497,7 @@ const FeedContent = () => {
                         </button>
                     </div>
                 ) : (
-                    posts.map(post => <Post key={post._id} post={post} />)
+                    posts.map(renderPost)
                 )}
 
                 {/* Modals */}
@@ -540,13 +551,13 @@ const FeedContent = () => {
                                             type="text"
                                             value={commentText}
                                             onChange={e => setCommentText(e.target.value)}
-                                            onKeyPress={e => e.key === 'Enter' && handleAddComment(selectedPost._id)}
+                                            onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && handleAddComment(selectedPost._id)}
                                             placeholder="Write a comment..."
                                             className="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:border-blue-500"
                                         />
                                         <button
                                             onClick={() => handleAddComment(selectedPost._id)}
-                                            disabled={!commentText.trim()}
+                                            disabled={!commentText.trim() || !!actionLoading}
                                             className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 disabled:opacity-50"
                                         >
                                             <FaPaperPlane />

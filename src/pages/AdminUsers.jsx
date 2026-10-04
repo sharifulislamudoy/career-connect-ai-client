@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
@@ -21,7 +22,7 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/admin/users`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/admin/users`, {
         headers: {
           "x-user-id": user.uid,
         },
@@ -43,8 +44,8 @@ const AdminUsers = () => {
   const handleRoleChange = async (uid, newRole) => {
     if (!newRole) return;
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/admin/users/${uid}/role`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/admin/users/${uid}/role`,
         {
           method: "PUT",
           headers: {
@@ -78,8 +79,8 @@ const AdminUsers = () => {
     )
       return;
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/admin/users/${uid}`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/admin/users/${uid}`,
         {
           method: "DELETE",
           headers: {
@@ -155,7 +156,7 @@ const AdminUsers = () => {
         <span className="text-sm text-gray-500">Total users: {users.length}</span>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-lg border border-gray-200/50 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50/80 border-b border-gray-200/50">

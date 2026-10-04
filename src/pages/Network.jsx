@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -93,7 +94,7 @@ const Network = () => {
 
   const loadAllUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users');
+      const response = await apiFetch(`${API_BASE_URL}/api/users`);
       const data = await response.json();
       
       if (data.success) {
@@ -101,8 +102,8 @@ const Network = () => {
           data.users
             .filter(u => u.uid !== user.uid)
             .map(async (userItem) => {
-              const statusResponse = await fetch(
-                `http://localhost:5000/api/connections/status/${user.uid}/${userItem.uid}`
+              const statusResponse = await apiFetch(
+                `${API_BASE_URL}/api/connections/status/${user.uid}/${userItem.uid}`
               );
               const statusData = await statusResponse.json();
               
@@ -124,7 +125,7 @@ const Network = () => {
 
   const loadConnections = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/user/${user.uid}?status=accepted`);
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/user/${user.uid}?status=accepted`);
       const data = await response.json();
       
       if (data.success) {
@@ -143,7 +144,7 @@ const Network = () => {
 
   const loadPendingRequests = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/pending/${user.uid}`);
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/pending/${user.uid}`);
       const data = await response.json();
       
       if (data.success) {
@@ -156,7 +157,7 @@ const Network = () => {
 
   const loadSentRequests = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/sent/${user.uid}`);
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/sent/${user.uid}`);
       const data = await response.json();
       
       if (data.success) {
@@ -176,14 +177,14 @@ const Network = () => {
 
   const loadSuggestions = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/suggestions/${user.uid}`);
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/suggestions/${user.uid}`);
       const data = await response.json();
       
       if (data.success) {
         const suggestionsWithStatus = await Promise.all(
           data.suggestions.map(async (suggestion) => {
-            const statusResponse = await fetch(
-              `http://localhost:5000/api/connections/status/${user.uid}/${suggestion.uid}`
+            const statusResponse = await apiFetch(
+              `${API_BASE_URL}/api/connections/status/${user.uid}/${suggestion.uid}`
             );
             const statusData = await statusResponse.json();
             
@@ -204,7 +205,7 @@ const Network = () => {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/stats/${user.uid}`);
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/stats/${user.uid}`);
       const data = await response.json();
       
       if (data.success) {
@@ -217,7 +218,7 @@ const Network = () => {
 
   const loadProfessions = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/professions');
+      const response = await apiFetch(`${API_BASE_URL}/api/users/professions`);
       const data = await response.json();
       
       if (data.success) {
@@ -230,7 +231,7 @@ const Network = () => {
 
   const sendConnectionRequest = async (receiverId) => {
     try {
-      const response = await fetch('http://localhost:5000/api/connections/send-request', {
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/send-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +256,7 @@ const Network = () => {
 
   const acceptConnectionRequest = async (requestId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/accept-request/${requestId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/accept-request/${requestId}`, {
         method: 'POST',
       });
 
@@ -273,7 +274,7 @@ const Network = () => {
 
   const rejectConnectionRequest = async (requestId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/reject-request/${requestId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/reject-request/${requestId}`, {
         method: 'POST',
       });
 
@@ -291,7 +292,7 @@ const Network = () => {
 
   const withdrawConnectionRequest = async (requestId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/withdraw-request/${requestId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/withdraw-request/${requestId}`, {
         method: 'DELETE',
       });
 
@@ -309,7 +310,7 @@ const Network = () => {
 
   const removeConnection = async (connectionId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/remove-connection/${connectionId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/connections/remove-connection/${connectionId}`, {
         method: 'DELETE',
       });
 
@@ -825,7 +826,7 @@ const Network = () => {
 
   if (loading && activeTab === 'all') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 py-8">
+      <div className="min-h-screen bg-[#f5f7fb]/30 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center h-64">
             <FaSpinner className="animate-spin text-4xl text-blue-500" />
@@ -836,7 +837,7 @@ const Network = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 py-8">
+    <div className="min-h-screen bg-[#f5f7fb]/30 py-8">
       <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div

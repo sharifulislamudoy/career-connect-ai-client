@@ -1,6 +1,7 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-import { io } from "socket.io-client";
+import { useSocket } from "./SocketContext";
 import toast from "react-hot-toast";
 
 const NotificationContext = createContext();
@@ -20,56 +21,26 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [socket, setSocket] = useState(null);
+  const socket = useSocket();
 
-  // Load initial notifications
   useEffect(() => {
-    if (user) {
-      loadNotifications();
-      setupSocket();
-    } else {
-      setNotifications([]);
-      setUnreadCount(0);
-      setLoading(false);
-    }
-
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
+    if (user) loadNotifications();
+    else { setNotifications([]); setUnreadCount(0); setLoading(false); }
   }, [user]);
 
-  const setupSocket = () => {
-    const newSocket = io("http://localhost:5000");
-    setSocket(newSocket);
-
-    // Listen for new notifications
-    newSocket.on("new-notification", (notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-
-      if (notification.type === "role_changed") {
-        toast.info(notification.message);
-        refreshUserProfile();
-      }
-    });
-
-    // Listen for notification count updates
-    newSocket.on("notification-count", (count) => {
-      setUnreadCount(count);
-    });
-
-    // Listen for force logout (e.g., role change or account deletion)
-    newSocket.on("force-logout", (data) => {
-      toast.error(data.reason || "You have been logged out");
-      logout();
-      // Use window.location to navigate without router context
-      window.location.href = "/auth/login";
-    });
-
-    return () => newSocket.disconnect();
-  };
+  useEffect(() => {
+    if (!socket) return;
+    const onNew = notification => {
+      setNotifications(prev => prev.some(n => n._id === notification._id) ? prev : [notification, ...prev]);
+      if (notification.type === "role_changed") { toast(notification.message); refreshUserProfile(); }
+    };
+    const onCount = count => setUnreadCount(count);
+    const onLogout = data => { toast.error(data.reason || "Please sign in again"); logout(); };
+    socket.on("new-notification", onNew);
+    socket.on("notification-count", onCount);
+    socket.on("force-logout", onLogout);
+    return () => { socket.off("new-notification", onNew); socket.off("notification-count", onCount); socket.off("force-logout", onLogout); };
+  }, [socket, refreshUserProfile, logout]);
 
   const loadNotifications = async (params = {}) => {
     try {
@@ -80,8 +51,8 @@ export const NotificationProvider = ({ children }) => {
         ...params,
       }).toString();
 
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/user/${user.uid}?${queryParams}`
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/notifications/user/${user.uid}?${queryParams}`
       );
       const data = await response.json();
 
@@ -102,8 +73,8 @@ export const NotificationProvider = ({ children }) => {
 
   const markAsRead = async (notificationId) => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/mark-read/${notificationId}`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/notifications/mark-read/${notificationId}`,
         {
           method: "PUT",
           headers: {
@@ -137,8 +108,8 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/mark-all-read/${user.uid}`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/notifications/mark-all-read/${user.uid}`,
         { method: "PUT" }
       );
 
@@ -161,8 +132,8 @@ export const NotificationProvider = ({ children }) => {
 
   const deleteNotification = async (notificationId) => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/${notificationId}`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/notifications/${notificationId}`,
         {
           method: "DELETE",
           headers: {
@@ -187,8 +158,8 @@ export const NotificationProvider = ({ children }) => {
 
   const clearAllNotifications = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/clear-all/${user.uid}`,
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/notifications/clear-all/${user.uid}`,
         { method: "DELETE" }
       );
 

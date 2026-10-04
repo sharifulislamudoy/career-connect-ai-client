@@ -1,7 +1,8 @@
 import { getAuth } from "firebase/auth";
 import app from "../Firebae/Firebase__config__";
 
-export const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
+import { API_BASE_URL } from "./api";
+export { API_BASE_URL } from "./api";
 
 export async function authenticatedFetch(path, options = {}) {
   const user = getAuth(app).currentUser;

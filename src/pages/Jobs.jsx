@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { apiFetch, API_BASE_URL } from "../lib/api";
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import {
@@ -21,6 +22,8 @@ const Jobs = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     location: '',
     type: '',
@@ -35,13 +38,14 @@ const Jobs = () => {
   const experienceLevels = ['Entry', 'Junior', 'Mid', 'Senior', 'Lead'];
 
   // UPDATED: fetchJobs with userId query parameter
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async (signal) => {
     try {
       setLoading(true);
+      setError('');
       const queryParams = new URLSearchParams({
         page: currentPage,
         limit: 12,
-        search: searchTerm,
+        search: searchQuery,
         location: filters.location,
         type: filters.type,
         experience: filters.experience
@@ -49,25 +53,34 @@ const Jobs = () => {
       if (user) {
         queryParams.append('userId', user.uid);
       }
-      const response = await fetch(`http://localhost:5000/api/jobs?${queryParams}`);
+      const response = await apiFetch(`${API_BASE_URL}/api/jobs?${queryParams}`, { signal });
       const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || "Jobs could not be loaded.");
       if (data.success) {
         setJobs(data.jobs);
-        setTotalPages(data.pagination.totalPages);
+        setTotalPages(Math.max(1, data.pagination?.totalPages || 1));
       }
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      if (error.name !== 'AbortError') setError(error.message || 'Jobs could not be loaded.');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  };
+  }, [currentPage, searchQuery, filters, user?.uid]);
 
   useEffect(() => {
-    fetchJobs();
-  }, [currentPage, searchTerm, filters]);
+    const controller = new AbortController();
+    fetchJobs(controller.signal);
+    return () => controller.abort();
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { setSearchQuery(searchTerm.trim()); setCurrentPage(1); }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setSearchQuery(searchTerm.trim());
     setCurrentPage(1);
   };
 
@@ -93,28 +106,29 @@ const Jobs = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pt-20 pb-16">
-      <div className="w-11/12 mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-8 sm:py-10">
+      <div className="cc-container">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
             Find Your <span className="text-blue-600">Dream Job</span>
           </h1>
           <p className="text-gray-600">
-            Discover thousands of job opportunities with all the information you need.
+            Find roles that match your next chapter. Search, compare and apply in one place.
           </p>
         </motion.div>
 
+        {error && <div role="alert" className="cc-panel p-4 mb-5 flex justify-between gap-3 text-sm text-red-600"><p>{error}</p><button onClick={() => fetchJobs()} className="font-semibold">Retry</button></div>}
         {/* Search and Filter Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-3xl shadow-lg border border-gray-200 p-6 mb-8"
+          className="cc-panel p-4 sm:p-6 mb-8"
         >
           <form onSubmit={handleSearch} className="space-y-6">
             {/* Search Bar */}
@@ -145,7 +159,7 @@ const Jobs = () => {
                 <input
                   type="text"
                   value={filters.location}
-                  onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+                  onChange={(e) => { setCurrentPage(1); setFilters({ ...filters, location: e.target.value }); }}
                   placeholder="City, Country"
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
                 />
@@ -158,7 +172,7 @@ const Jobs = () => {
                 </label>
                 <select
                   value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                  onChange={(e) => { setCurrentPage(1); setFilters({ ...filters, type: e.target.value }); }}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
                 >
                   <option value="">All Types</option>
@@ -175,7 +189,7 @@ const Jobs = () => {
                 </label>
                 <select
                   value={filters.experience}
-                  onChange={(e) => setFilters({ ...filters, experience: e.target.value })}
+                  onChange={(e) => { setCurrentPage(1); setFilters({ ...filters, experience: e.target.value }); }}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 text-sm"
                 >
                   <option value="">All Levels</option>
@@ -190,7 +204,7 @@ const Jobs = () => {
             {(filters.location || filters.type || filters.experience) && (
               <button
                 type="button"
-                onClick={() => setFilters({ location: '', type: '', experience: '' })}
+                onClick={() => { setCurrentPage(1); setFilters({ location: '', type: '', experience: '' }); }}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
                 Clear all filters

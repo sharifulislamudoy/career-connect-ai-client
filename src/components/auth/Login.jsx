@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaGoogle,
@@ -34,10 +34,13 @@ const Login = () => {
   } = useAuth();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedPath = location.state?.from;
+  const returnTo = requestedPath?.pathname?.startsWith("/") && !requestedPath.pathname.startsWith("//") && !requestedPath.pathname.startsWith("/auth") ? `${requestedPath.pathname}${requestedPath.search || ""}${requestedPath.hash || ""}` : "/";
 
   useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
+    if (user) navigate(returnTo, { replace: true });
+  }, [user, navigate, returnTo]);
 
   useEffect(() => {
     return () => clearError();
@@ -105,7 +108,7 @@ const Login = () => {
       }
 
       toast.success("Logged in successfully!");
-      navigate("/");
+      navigate(returnTo, { replace: true });
     } catch (err) {
       toast.error(err.message || "Verification failed");
     } finally {
@@ -136,7 +139,7 @@ const Login = () => {
     try {
       await signInWithGoogle();
       toast.success("Logged in successfully!");
-      navigate("/");
+      navigate(returnTo, { replace: true });
     } catch (err) {
       toast.error(err.message || "Google login failed");
     } finally {
@@ -358,7 +361,7 @@ const Login = () => {
         <div className="text-center mt-8 pt-6 border-t border-gray-200/50">
           <p className="text-gray-600">
             Don't have an account?{" "}
-            <Link to="/auth/sign-up" className="text-blue-600 font-semibold">
+            <Link to="/auth/sign-up" state={location.state} className="text-blue-600 font-semibold">
               Sign up
             </Link>
           </p>

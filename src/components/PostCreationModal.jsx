@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaImage, FaSmile, FaMapMarkerAlt, FaUserTag } from 'react-icons/fa';
@@ -66,7 +67,7 @@ const PostCreationModal = ({ isOpen, onClose, onPostCreated }) => {
         formData.append('cloud_name', 'dohhfubsa');
 
         try {
-            const response = await fetch(
+            const response = await apiFetch(
                 'https://api.cloudinary.com/v1_1/dohhfubsa/image/upload',
                 {
                     method: 'POST',
@@ -126,7 +127,7 @@ const PostCreationModal = ({ isOpen, onClose, onPostCreated }) => {
             };
 
             // Send post to backend
-            const response = await fetch('http://localhost:5000/api/posts', {
+            const response = await apiFetch(`${API_BASE_URL}/api/posts`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

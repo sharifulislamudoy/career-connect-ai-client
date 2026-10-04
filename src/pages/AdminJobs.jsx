@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -26,7 +27,7 @@ const AdminJobs = () => {
   const fetchPendingJobs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/admin/jobs/pending', {
+      const response = await apiFetch(`${API_BASE_URL}/api/admin/jobs/pending`, {
         headers: {
           'x-user-id': user.uid
         }
@@ -49,7 +50,7 @@ const AdminJobs = () => {
     if (!window.confirm('Approve this job? It will be marked as verified.')) return;
     setVerifying(jobId);
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/jobs/${jobId}/verify`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/admin/jobs/${jobId}/verify`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +92,7 @@ const AdminJobs = () => {
       </p>
 
       {pendingJobs.length === 0 ? (
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-lg border border-gray-200/50 p-12 text-center">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200/50 p-12 text-center">
           <FaCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-800 mb-2">All clear!</h3>
           <p className="text-gray-600">There are no jobs pending verification.</p>

@@ -1,3 +1,4 @@
+import { apiFetch, API_BASE_URL } from "../lib/api";
 // src/components/messages/Messages.jsx (Updated - fix double message issue)
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,7 +49,7 @@ const Messages = () => {
   // Initialize socket connection
   useEffect(() => {
     if (user) {
-      const newSocket = io('http://localhost:5000');
+      const newSocket = io(`${API_BASE_URL}`);
       setSocket(newSocket);
 
       // Set user as online
@@ -154,7 +155,7 @@ const Messages = () => {
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/messages/conversations/${user.uid}`);
+      const response = await apiFetch(`${API_BASE_URL}/api/messages/conversations/${user.uid}`);
       const data = await response.json();
       
       if (data.success) {
@@ -178,8 +179,8 @@ const Messages = () => {
         params.append('before', before.toISOString());
       }
 
-      const response = await fetch(
-        `http://localhost:5000/api/messages/conversation/${selectedConversation.conversationId}?${params}`
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/messages/conversation/${selectedConversation.conversationId}?${params}`
       );
       
       const data = await response.json();
@@ -329,14 +330,14 @@ const Messages = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fb]/30 flex items-center justify-center">
         <FaSpinner className="animate-spin text-4xl text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
+    <div className="min-h-screen bg-[#f5f7fb]/30">
       <div className="w-11/12 mx-auto h-screen lg:px-4">
         <div className="flex h-full">
           {/* Conversations List */}
