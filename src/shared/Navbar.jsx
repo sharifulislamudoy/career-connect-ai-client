@@ -30,6 +30,7 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import NotificationBell from "../components/notification/NotificationBell";
+import PwaInstallButton from "../components/pwa/PwaInstallButton";
 
 const Navbar = () => {
   const { user, userProfile, logout } = useAuth();
@@ -692,6 +693,8 @@ const Navbar = () => {
                       </NavLink>
                     ))}
                   </nav>
+
+                  <PwaInstallButton />
 
                   <motion.button
                     whileHover={{ scale: 1.02 }}

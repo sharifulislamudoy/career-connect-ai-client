@@ -8,6 +8,9 @@ import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { Toaster } from 'react-hot-toast'
+import { initializePwa } from './lib/pwa'
+
+initializePwa()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
