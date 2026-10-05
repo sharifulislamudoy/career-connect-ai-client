@@ -21,6 +21,7 @@ const JobApplications = lazy(() => import("../pages/JobApplications"));
 const EditJob = lazy(() => import("../pages/EditJob"));
 const Network = lazy(() => import("../pages/Network"));
 const Messages = lazy(() => import("../pages/Messages"));
+const CVBuilder = lazy(() => import("../pages/CVBuilder"));
 const ResumeBuilder = lazy(() => import("../pages/ResumeBuilder"));
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -161,6 +162,8 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      { path: "/create-cv", element: <ProtectedRoute><CVBuilder /></ProtectedRoute> },
+      { path: "/cv", element: <Navigate to="/create-cv" replace /> },
       {
         path: "/create-resume",
         element: (

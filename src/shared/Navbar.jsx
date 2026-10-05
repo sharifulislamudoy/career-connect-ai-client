@@ -48,6 +48,7 @@ export default function Navbar() {
     : [
         ["/my-applications", "My applications", FaClipboardList],
         ["/create-resume", "Resume builder", FaFileAlt],
+        ["/create-cv", "CV builder", FaFileAlt],
         ["/ats-score", "Resume score", FaChartBar],
         ["/mock-interview", "Interview practice", FaVideo],
         ["/learning-path", "Learning path", FaBookOpen],

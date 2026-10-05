@@ -1,4 +1,6 @@
 import { apiFetch } from "../lib/api";
+import { Link } from "react-router";
+import SavedResumes from "../components/resume/SavedResumes";
 // src/pages/Settings.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1324,6 +1326,7 @@ const Settings = () => {
                 {renderTabContent()}
               </AnimatePresence>
             </div>
+            <div className="mt-6"><SavedResumes /></div><div className="mt-6 rounded-2xl bg-white border p-6"><h2 className="font-semibold text-lg">Career practice &amp; learning</h2><p className="text-sm text-gray-600 mt-2">Your saved interviews, roadmaps and progress inform your AI Coach.</p><div className="flex flex-wrap gap-4 mt-4"><Link className="text-blue-600 underline" to="/mock-interview">Saved interviews</Link><Link className="text-blue-600 underline" to="/learning-path">Saved learning paths</Link><Link className="text-blue-600 underline" to="/ats-score">ATS reports</Link></div></div>
           </motion.div>
         </div>
       </div>

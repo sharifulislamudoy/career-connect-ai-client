@@ -1,354 +1,166 @@
-import { authenticatedFetch } from '../lib/aiApi';
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { FaUpload, FaChartBar, FaLightbulb, FaStar, FaHistory, FaDownload } from 'react-icons/fa';
-
-const ATSScoreCheck = () => {
-  const { user } = useAuth();
+import { resumeRequest, jsonOptions } from '../lib/resumeApi';
+export default function ATSScoreCheck() {
+  const {
+    user
+  } = useAuth();
+  const reducedMotion = useReducedMotion();
   const [file, setFile] = useState(null);
-  const [jobDescription, setJobDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [text, setText] = useState('');
+  const [jd, setJd] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [verified, setVerified] = useState(false);
+  const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [scoreHistory, setScoreHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
-      setFile(selectedFile);
-      setError('');
-    } else {
-      setError('Please select a PDF file');
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!file) {
-      setError('Please select a resume file');
-      return;
-    }
-
-    if (!user?.email) {
-      setError('Please log in to check your ATS score');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    const formData = new FormData();
-    formData.append('resume', file);
-    if (jobDescription) {
-      formData.append('jobDescription', jobDescription);
-    }
-
-    try {
-      const response = await authenticatedFetch('/api/ats/check-score', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze resume');
-      }
-
-      setResult(data);
-      setShowHistory(false);
-
-      // Refresh history
-      fetchScoreHistory();
-
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchScoreHistory = async () => {
+  const [warnings, setWarnings] = useState([]);
+  const [links, setLinks] = useState([]);
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const requestRef = useRef(null);
+  const loadHistory = useCallback(async () => {
     if (!user?.email) return;
-
+    setHistoryLoading(true);
+    setHistoryError('');
     try {
-      const response = await authenticatedFetch(`/api/ats/history/${encodeURIComponent(user.email)}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setScoreHistory(data.scores);
-      }
-    } catch (err) {
-      console.error('Failed to fetch score history:', err);
+      const data = await resumeRequest(`/api/ats/history/${encodeURIComponent(user.email)}`);
+      setHistory(data.scores || []);
+    } catch (e) {
+      setHistoryError(e.message);
+    } finally {
+      setHistoryLoading(false);
     }
+  }, [user?.email]);
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+  useEffect(() => () => requestRef.current?.abort(), []);
+  const invalidate = () => {
+    setResult(null);
+    setVerified(false);
+    setError('');
   };
-
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-green-600';
-    if (score >= 80) return 'text-blue-600';
-    if (score >= 70) return 'text-yellow-600';
-    if (score >= 60) return 'text-orange-600';
-    return 'text-red-600';
-  };
-
-  const getScoreBgColor = (score) => {
-    if (score >= 90) return 'bg-green-100 border-green-300';
-    if (score >= 80) return 'bg-blue-100 border-blue-300';
-    if (score >= 70) return 'bg-yellow-100 border-yellow-300';
-    if (score >= 60) return 'bg-orange-100 border-orange-300';
-    return 'bg-red-100 border-red-300';
-  };
-
-  return (
-    <div className="min-h-screen bg-[#f5f7fb] py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            ATS Resume Score Check
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Upload your resume to get an instant ATS compatibility score and personalized suggestions for improvement.
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Upload Form */}
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-2xl shadow-lg p-6 mb-6"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Analyze Your Resume</h2>
-                <button
-                  onClick={() => {
-                    setShowHistory(!showHistory);
-                    if (!showHistory) {
-                      fetchScoreHistory();
-                    }
-                  }}
-                  className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <FaHistory />
-                  <span>History</span>
-                </button>
-              </div>
-
-              {showHistory ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Previous Scores</h3>
-                  {scoreHistory.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No previous scores found</p>
-                  ) : (
-                    scoreHistory.map((score) => (
-                      <div key={score.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h4 className="font-semibold">{score.fileName}</h4>
-                            <p className="text-sm text-gray-600">
-                              {new Date(score.createdAt).toLocaleDateString()}
-                            </p>
-                            {score.jobDescription && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                Job: {score.jobDescription.substring(0, 50)}...
-                              </p>
-                            )}
-                          </div>
-                          <div className={`text-2xl font-bold ${getScoreColor(score.score)}`}>
-                            {score.score}/100
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* File Upload */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Resume (PDF)
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center hover:border-blue-400 transition-colors">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="resume-upload"
-                      />
-                      <label htmlFor="resume-upload" className="cursor-pointer">
-                        <FaUpload className="mx-auto text-3xl text-gray-400 mb-3" />
-                        <p className="text-gray-600">
-                          {file ? file.name : 'Click to upload your resume'}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          PDF files only, max 5MB
-                        </p>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Job Description (Optional) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Target Job Description (Optional)
-                    </label>
-                    <textarea
-                      value={jobDescription}
-                      onChange={(e) => setJobDescription(e.target.value)}
-                      placeholder="Paste the job description here for more targeted analysis..."
-                      className="w-full h-32 px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    />
-                  </div>
-
-                  {/* Error Message */}
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl">
-                      {error}
-                    </div>
-                  )}
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading || !file}
-                    className="w-full bg-blue-600 text-white py-3 px-6 rounded-2xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Analyzing Resume...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FaChartBar />
-                        <span>Check ATS Score</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-            </motion.div>
-          </div>
-
-          {/* Right Column - Results */}
-          <div className="lg:col-span-1">
-            {result ? (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="space-y-6"
-              >
-                {/* Score Card */}
-                <div className={`border-2 rounded-2xl p-6 text-center ${getScoreBgColor(result.score)}`}>
-                  <div className="text-5xl font-bold mb-2">
-                    <span className={getScoreColor(result.score)}>{result.score}</span>
-                    <span className="text-gray-600">/100</span>
-                  </div>
-                  <p className="text-gray-600 mb-4">ATS Compatibility Score</p>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full ${result.score >= 90 ? 'bg-green-500' :
-                          result.score >= 80 ? 'bg-blue-500' :
-                            result.score >= 70 ? 'bg-yellow-500' :
-                              result.score >= 60 ? 'bg-orange-500' : 'bg-red-500'
-                        }`}
-                      style={{ width: `${result.score}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Strengths */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <FaStar className="text-green-500" />
-                    <h3 className="text-lg font-semibold">Strengths</h3>
-                  </div>
-                  <ul className="space-y-2">
-                    {result.strengths.map((strength, index) => (
-                      <li key={index} className="flex items-start space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
-                        <span className="text-gray-700">{strength}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Keywords */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <h3 className="text-lg font-semibold mb-4">Keyword Analysis</h3>
-
-                  <div className="mb-4">
-                    <h4 className="font-medium text-green-600 mb-2">Found Keywords</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {result.keywords.found.map((keyword, index) => (
-                        <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                          {keyword}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {result.keywords.missing.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-red-600 mb-2">Missing Keywords</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {result.keywords.missing.map((keyword, index) => (
-                          <span key={index} className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
-                            {keyword}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Suggestions */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <FaLightbulb className="text-yellow-500" />
-                    <h3 className="text-lg font-semibold">Improvement Suggestions</h3>
-                  </div>
-                  <ul className="space-y-3">
-                    {result.suggestions.map((suggestion, index) => (
-                      <li key={index} className="flex items-start space-x-2">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0" />
-                        <span className="text-gray-700">{suggestion}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white rounded-2xl shadow-lg p-6 text-center"
-              >
-                <FaChartBar className="text-4xl text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Ready to Analyze
-                </h3>
-                <p className="text-gray-600">
-                  Upload your resume to get your ATS compatibility score and personalized improvement suggestions.
-                </p>
-              </motion.div>
-            )}
-          </div>
+  function selectFile(e) {
+    const selected = e.target.files?.[0];
+    invalidate();
+    setText('');
+    setWarnings([]);
+    setFile(null);
+    setLinks([]);
+    if (!selected) return;
+    if (!selected.name.toLowerCase().endsWith('.pdf') || selected.size > 5 * 1024 * 1024) {
+      setError('Select one PDF, 5 MB or smaller.');
+      return;
+    }
+    setFile(selected);
+  }
+  async function extract() {
+    if (!file) return;
+    setBusy('extract');
+    setError('');
+    setResult(null);
+    setText('');
+    setVerified(false);
+    const controller = new AbortController();
+    requestRef.current = controller;
+    try {
+      const body = new FormData();
+      body.append('resume', file);
+      const data = await resumeRequest('/api/ats/extract', {
+        method: 'POST',
+        body,
+        signal: controller.signal
+      });
+      setText(data.text);
+      setLinks(data.links || []);
+      setWarnings([`${data.pageCount} page(s) extracted.`, ...(data.warnings || [])]);
+    } catch (e) {
+      if (e.name !== 'AbortError') setError(e.message);
+    } finally {
+      setBusy('');
+    }
+  }
+  async function analyze(e) {
+    e.preventDefault();
+    setBusy('score');
+    setError('');
+    setResult(null);
+    const controller = new AbortController();
+    requestRef.current = controller;
+    try {
+      const data = await resumeRequest('/api/ats/check-score', {
+        ...jsonOptions('POST', {
+          resumeText: text,
+          jobDescription: jd,
+          targetKeywords: keywords, links,
+          fileName: file?.name || 'Pasted / reviewed resume'
+        }),
+        signal: controller.signal
+      });
+      setResult(data);
+      loadHistory();
+    } catch (e) {
+      if (e.name !== 'AbortError') setError(e.message);
+    } finally {
+      setBusy('');
+    }
+  }
+  async function openHistory(item) {
+    setBusy('history');
+    setError('');
+    try {
+      const data = await resumeRequest(`/api/ats/score/${item.id}`);
+      setResult(data.score);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy('');
+    }
+  }
+  const control = 'mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:opacity-60';
+  return <Motion.main initial={reducedMotion ? false : {
+    opacity: 0,
+    y: 12
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-6">
+    <div className="mx-auto max-w-7xl">
+      <header className="mb-6"><p className="mb-1 text-xs font-semibold uppercase tracking-widest text-blue-700">Understand your resume</p><h1 className="text-2xl font-bold md:text-3xl">ATS Resume Checker</h1><p className="mt-2 max-w-3xl text-sm text-slate-600">Extract → verify → analyze. Every point is calculated from your submitted text using visible rules. No sample or random scores.</p></header>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <form onSubmit={analyze} className="min-w-0 space-y-5 rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
+          <section><h2 className="text-lg font-semibold">1. Upload or paste your resume</h2><p className="mt-1 text-sm text-slate-500">Text-based PDF only, up to 5 MB. For scans, run OCR separately or paste verified text.</p><label htmlFor="resume-upload" className="mt-4 block text-sm font-medium">Resume PDF</label><input id="resume-upload" type="file" accept="application/pdf,.pdf" onChange={selectFile} disabled={!!busy} className={`${control} file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700`} /><button type="button" onClick={extract} disabled={!file || !!busy} className="mt-3 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40">{busy === 'extract' ? 'Reading PDF…' : 'Extract PDF text'}</button></section>
+          <section><h2 className="text-lg font-semibold">2. Verify the text we will score</h2>{warnings.length > 0 && <ul className="my-3 list-disc rounded-xl bg-amber-50 p-4 pl-8 text-xs leading-relaxed text-amber-900">{warnings.map(w => <li key={w}>{w}</li>)}</ul>}{links.length > 0 && <details className="mb-3 rounded-xl bg-blue-50 p-3"><summary className="cursor-pointer text-sm font-medium text-blue-800">{links.length} hyperlink targets read from PDF</summary><ul className="mt-2 space-y-2 text-xs">{links.map((link, i) => <li key={i} className="break-all">Page {link.page}: <a href={link.url} target="_blank" rel="noreferrer" className="text-blue-800 underline">{link.url}</a></li>)}</ul></details>}<label htmlFor="resume-text" className="mt-3 block text-sm font-medium">Resume text — editable</label><textarea id="resume-text" rows={14} maxLength={60000} disabled={!!busy} value={text} onChange={e => {
+              setText(e.target.value);
+              invalidate();
+              setFile(null);
+              setWarnings([]);
+            }} placeholder="Paste your full resume here, or extract a PDF above. Keep section headings on separate lines." className={control} /><p className="mt-1 text-xs text-slate-500">{text.trim() ? text.trim().split(/\s+/).length : 0} words · {text.length.toLocaleString()} / 60,000 characters</p><label className="mt-3 flex items-start gap-3 text-sm"><input type="checkbox" checked={verified} disabled={!text.trim() || !!busy} onChange={e => setVerified(e.target.checked)} className="mt-1" /><span>I checked that this includes all pages, correct words, dates and section order.</span></label></section>
+          <section><h2 className="text-lg font-semibold">3. Match a target role (optional)</h2><label htmlFor="job-description" className="mt-3 block text-sm font-medium">Job description</label><textarea id="job-description" rows={6} maxLength={10000} disabled={!!busy} value={jd} onChange={e => {
+              setJd(e.target.value);
+              setResult(null);
+            }} placeholder="Paste the real job description for a targeted comparison." className={control} /><label htmlFor="target-keywords" className="mt-4 block text-sm font-medium">Important job terms (optional)</label><textarea id="target-keywords" rows={2} maxLength={2000} disabled={!!busy} value={keywords} onChange={e => {
+              setKeywords(e.target.value);
+              setResult(null);
+            }} placeholder="React, TypeScript, REST API, PostgreSQL" className={control} /><p className="mt-2 text-xs leading-relaxed text-slate-500">Comma-separated terms, up to 40. Otherwise we select up to 40 frequent terms from the job description. Review them in the result: automatic selection can include irrelevant terms. With no target, keyword points are excluded.</p></section>
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          <button type="submit" disabled={!verified || !text.trim() || !!busy} className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white disabled:opacity-40">{busy === 'score' ? 'Calculating from your text…' : 'Analyze verified text'}</button>
+        </form>
+        <div className="min-w-0 space-y-5">
+          {!result ? <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="text-lg font-semibold">Your analysis appears here</h2><p className="mt-3 text-sm leading-relaxed text-slate-600">See contact checks, standard headings, action verbs, measurable impact, dates, length and target keyword coverage. Each check includes the text that earned its points.</p><p className="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">This is a transparent text-readiness estimate. Different employers use different ATS systems; a score cannot guarantee parsing or selection.</p></section> : <section aria-live="polite" className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{result.assessmentType || 'Previous analysis'}</h2><p className="mt-1 text-xs text-slate-500">{result.method || 'Legacy AI estimate'} · {result.wordCount ? `${result.wordCount} words` : 'Historical report'}</p></div><div className="rounded-2xl bg-blue-50 px-5 py-3 text-blue-800"><span className="text-4xl font-bold">{result.score}</span><span className="text-sm"> / 100</span></div></div>
+            {!['transparent-rules-v1', 'transparent-rules-v2'].includes(result.method) && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">This historical result used the previous scoring method. Run a new analysis for a rule-by-rule breakdown.</p>}
+            {result.checks && <div className="mt-5 space-y-3"><h3 className="font-semibold">Score breakdown · {result.rawPoints}/{result.maxPoints} raw points</h3>{result.checks.map(check => <article key={check.label} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-3 text-sm"><h4 className="font-medium">{check.label}</h4><strong className={check.points === check.max ? 'text-emerald-700' : 'text-amber-700'}>{check.points}/{check.max}</strong></div><p className="mt-2 break-words text-xs leading-relaxed text-slate-600">Evidence: {check.evidence}</p>{check.advice && <p className="mt-2 text-xs text-blue-800">{check.advice}</p>}</article>)}</div>}
+            {result.keywords && <div className="mt-5"><h3 className="font-semibold">Target keyword coverage</h3><p className="my-2 text-xs text-slate-500">{result.keywordSource || 'Previous analysis'}</p>{['found', 'missing'].map(type => <div key={type} className="mt-3"><h4 className="text-sm font-medium capitalize">{type}</h4><div className="mt-2 flex flex-wrap gap-2">{(result.keywords[type] || []).map(k => <span key={k} className={`break-all rounded-lg px-2 py-1 text-xs ${type === 'found' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{k}</span>)}{!result.keywords[type]?.length && <p className="text-xs text-slate-500">{result.keywordSource === 'No target supplied' ? 'No target supplied.' : 'None.'}</p>}</div></div>)}<p className="mt-3 text-xs text-slate-500">Only add terms you can support with real skills or experience.</p></div>}
+            <p className="mt-5 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">{result.limitations || 'Historical AI estimate. This is not an employer ATS score.'}</p>
+            {result.resumeText && <details className="mt-4"><summary className="cursor-pointer text-sm text-blue-700">Exact text used for this score</summary><pre className="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-slate-50 p-3 text-xs">{result.resumeText}</pre></details>}
+          </section>}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex justify-between gap-3"><h2 className="font-semibold">Analysis history</h2><button type="button" onClick={loadHistory} disabled={historyLoading} className="text-sm text-blue-700">Refresh</button></div>{historyLoading && <p className="mt-3 text-sm" role="status">Loading history…</p>}{historyError && <p role="alert" className="mt-3 text-sm text-red-700">{historyError}</p>}{!historyLoading && !historyError && !history.length && <p className="mt-3 text-sm text-slate-500">Your analyses are saved privately here.</p>}<div className="mt-3 max-h-72 space-y-2 overflow-y-auto">{history.map(item => <button key={item.id} type="button" disabled={!!busy} onClick={() => openHistory(item)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 text-left disabled:opacity-40"><span className="min-w-0"><span className="block truncate text-sm font-medium">{item.fileName}</span><span className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleDateString()} · {item.method === 'transparent-rules-v2' ? 'Rules v2 + links' : item.method ? 'Rules v1' : 'Legacy'}</span></span><strong>{item.score}/100</strong></button>)}</div></section>
         </div>
       </div>
     </div>
-  );
-};
-
-export default ATSScoreCheck;
+  </Motion.main>;
+}
