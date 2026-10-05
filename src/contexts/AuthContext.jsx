@@ -1,4 +1,4 @@
-import { apiFetch } from "../lib/api";
+import { apiFetch, clearDeviceSession } from "../lib/api";
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import {
   getAuth,
@@ -11,6 +11,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import app from "../Firebae/Firebase__config__";
+import AccountReview from "../pages/AccountReview";
 
 const AuthContext = createContext();
 
@@ -29,7 +30,10 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [accountBanned, setAccountBanned] = useState(false);
+  useEffect(() => { const listener=()=>setAccountBanned(true); window.addEventListener("career-account-banned",listener); return()=>window.removeEventListener("career-account-banned",listener); },[]);
   const authVersion = useRef(0);
+  const registrationData = useRef(null);
 
   const auth = getAuth(app);
   const googleProvider = new GoogleAuthProvider();
@@ -249,6 +253,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signUp = async (email, password, userData) => {
+    registrationData.current = userData || {};
     try {
       setError("");
 
@@ -301,6 +306,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(firebaseUser);
       setUserProfile(savedUser);
+      registrationData.current = null;
 
       return userCredential;
     } catch (error) {
@@ -375,6 +381,8 @@ export const AuthProvider = ({ children }) => {
     try {
       setError("");
 
+      clearDeviceSession();
+      setAccountBanned(false);
       await signOut(auth);
 
       setUser(null);
@@ -414,6 +422,8 @@ export const AuthProvider = ({ children }) => {
 
   const handleAuthStateChange = async (currentUser) => {
     const version = ++authVersion.current;
+    setAccountBanned(false);
+    clearDeviceSession();
     setUser(currentUser);
     setUserProfile(null);
 
@@ -422,7 +432,7 @@ export const AuthProvider = ({ children }) => {
         let profile = await getUserFromBackend(currentUser.uid);
 
         if (!profile) {
-          const backendUserData = buildBackendUserData(currentUser);
+          const backendUserData = buildBackendUserData(currentUser, registrationData.current || {});
           profile = await saveUserToBackend(backendUserData);
         }
 
@@ -448,6 +458,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     userProfile,
+    accountBanned,
     signUp,
     logIn,
     signInWithGoogle,
@@ -465,7 +476,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {loading ? <div role="status" className="min-h-screen flex items-center justify-center text-sm text-gray-500">Opening Creative Career AI…</div> : children}
+      {loading ? <div role="status" className="min-h-screen flex items-center justify-center text-sm text-gray-500">Opening Creative Career AI…</div> : accountBanned && user ? <AccountReview /> : children}
     </AuthContext.Provider>
   );
 };

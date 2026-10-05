@@ -2,7 +2,7 @@ import { authenticatedFetch } from './aiApi';
 export async function resumeRequest(path, options = {}) {
   const response = await authenticatedFetch(path, options);
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.error || 'Request failed. Please retry.');
+  if (!response.ok) throw new Error(data?.error || data?.message || 'Request failed. Please retry.');
   return data;
 }
 export const jsonOptions = (method, data) => ({
@@ -29,7 +29,7 @@ export async function downloadResume(data) {
 }
 export function emptyResume(user, mode = 'resume') {
   return {
-    documentType: mode, photoUrl: '',
+    documentType: mode, template: 'ats', customStyle: {}, photoUrl: '',
     title: '',
     personal: {
       name: user?.displayName || '',

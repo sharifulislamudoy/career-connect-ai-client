@@ -7,6 +7,12 @@ import Home from "../pages/Home";
 const Login = lazy(() => import("../components/auth/Login"));
 const SignUp = lazy(() => import("../components/auth/Signup"));
 import Auth from "../layouts/Auth";
+const CareerTools = lazy(() => import('../pages/CareerTools'));
+const CareerWorkspace = lazy(() => import('../pages/CareerWorkspace'));
+const CareerAlerts = lazy(() => import('../pages/CareerAlerts'));
+const CareerProgress = lazy(() => import('../pages/CareerProgress'));
+const AccountReview = lazy(() => import('../pages/AccountReview'));
+const AdminReports = lazy(() => import('../pages/AdminReports'));
 const Payment = lazy(() => import("../pages/Payment"));
 const ATSScoreCheck = lazy(() => import("../pages/ATSScoreCheck"));
 const Settings = lazy(() => import("../pages/Settings"));
@@ -37,6 +43,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Main,
     children: [
+      ...[["/career",CareerTools],["/career/tools/:tool",CareerTools],["/career/workspace",CareerWorkspace],["/career/alerts",CareerAlerts],["/career/progress",CareerProgress],["/account-review",AccountReview]].map(([path,Component]) => ({path,element:<ProtectedRoute><Component /></ProtectedRoute>})),
       { path: "/notifications", element: <ProtectedRoute><NotificationsPage /></ProtectedRoute> },
       {
         index: true,
@@ -200,6 +207,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <Navigate to="/admin/dashboard" replace />,
       },
+      { path: "reports", element: <AdminReports /> },
       {
         path: "dashboard",
         element: <AdminDashboard />,

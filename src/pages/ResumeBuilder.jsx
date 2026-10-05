@@ -8,6 +8,7 @@ import SavedResumes from '../components/resume/SavedResumes';
 import ProjectLinksEditor from '../components/resume/ProjectLinksEditor';
 import CvPhotoUpload from '../components/resume/CvPhotoUpload';
 import ResumePreview from '../components/resume/ResumePreview';
+import TemplatePicker from '../components/resume/TemplatePicker';
 const sections = ['personal', 'skills', 'projects', 'experience', 'education', 'certifications', 'languages', 'review'];
 const labels = {
   personal: 'Contact & summary',
@@ -225,6 +226,7 @@ export default function ResumeBuilder({ mode = 'resume' }) {
               ...prev,
               [section]: [...prev[section], { ...Object.fromEntries(configs[section].map(([key]) => [key, ''])), ...(section === 'projects' ? { links: [] } : {}) }]
             }))} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700 disabled:opacity-50">+ Add {labels[section]}</button></div>}
+          <TemplatePicker data={data} onChange={value => change(() => value)} />
           {section === 'review' && <div className="mt-4 space-y-5"><div className={`rounded-xl p-4 text-sm ${missing.length ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'}`}><h3 className="font-semibold">{missing.length ? 'Before exporting' : 'Core information is ready'}</h3>{missing.length ? <ul className="mt-2 list-disc pl-5">{missing.map(m => <li key={m}>{m}</li>)}</ul> : <p className="mt-2">Check every fact and link in the preview before you download.</p>}</div><p className="text-sm text-slate-600">Aim for 1 page for early career, or 2 pages when your experience needs it. Export adds pages automatically instead of cutting content. Optional sections can be skipped; never add fictional experience to fill space.</p><button type="button" onClick={() => setPreview(true)} className="text-blue-700 xl:hidden">Show live preview</button></div>}
           <label className="mt-6 flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm"><input type="checkbox" disabled={busy || photoBusy} checked={data.coachEnabled !== false} onChange={e => change(prev => ({
               ...prev,

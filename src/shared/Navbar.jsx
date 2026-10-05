@@ -256,7 +256,11 @@ export default function Navbar() {
               {[
                 ...links,
                 ["/settings", "Profile & settings", FaCog],
-                ["/pricing", "Explore plans", FaCrown],
+                ["/career", "Career toolkit", FaCrown],
+                ["/career/progress", "Progress & devices", FaCrown],
+                ["/career/workspace", "Application workspace", FaCrown],
+                ["/career/alerts", "Job alerts", FaCrown],
+                ["/pricing", "Plans & usage", FaCrown],
                 ...(admin
                   ? [["/admin/dashboard", "Admin dashboard", FaCog]]
                   : []),

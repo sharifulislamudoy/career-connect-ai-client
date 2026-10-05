@@ -1,12 +1,12 @@
 import { projectLinks } from '../../lib/resumeApi';
-function Section({ title, children }) { return <section className="mt-4"><h3 className="mb-1 border-b border-gray-400 pb-1 font-bold">{title}</h3>{children}</section>; }
+function Section({ title, children }) { return <section className="mt-4"><h3 style={{color:'var(--resume-accent)'}} className="mb-1 border-b border-gray-400 pb-1 font-bold">{title}</h3>{children}</section>; }
 function LinkedText({ label, url }) { return /^https?:\/\//i.test(url || '') ? <a href={url} target="_blank" rel="noreferrer" className="text-blue-800 underline">{label}</a> : <span>{label}</span>; }
 function Url({ label, url }) { return url ? <p className="break-all"><span>{label}: </span><LinkedText label={url} url={url} /></p> : null; }
 function Bullets({ text }) { return text ? <ul className="my-1 list-disc space-y-0.5 pl-5">{text.split('\n').filter(s => s.trim()).map((s, i) => <li key={i}>{s.replace(/^\s*[•●*-]\s*/, '')}</li>)}</ul> : null; }
 export default function ResumePreview({ data }) {
   const p = data.personal; const groups = {};
   data.skills.forEach(skill => { const key = skill.category || 'Core skills'; (groups[key] ||= []).push(skill.name); });
-  return <article aria-label="Live document preview" className="min-w-0 break-words bg-white p-5 font-[Arial] text-[11px] leading-snug text-black sm:p-8">
+  return <article aria-label="Live document preview" style={{fontSize:`${data.customStyle?.fontSize || (data.template==='compact'?9:11)}px`,'--resume-accent':data.customStyle?.accent || (data.template==='professional'?'#1d4ed8':'#111111')}} className="min-w-0 break-words bg-white p-5 font-[Arial] text-[11px] leading-snug text-black sm:p-8">
     <header className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="text-[22px] font-bold">{p.name || 'Your name'}</h2><p className="mb-3 font-bold">{p.title || 'Your professional title'}</p><p>{[p.phone, p.email, p.location].filter(Boolean).join(' | ')}</p><Url label="LinkedIn" url={p.linkedin} /><Url label="Portfolio" url={p.website} /><Url label="GitHub" url={p.github} /></div>{data.documentType === 'cv' && data.photoUrl && <img src={data.photoUrl} alt="CV portrait" className="h-24 w-20 shrink-0 object-cover" />}</header>
     {p.summary && <Section title="Career Objective"><p className="whitespace-pre-line">{p.summary}</p></Section>}
     {!!data.skills.length && <Section title="Skills">{Object.entries(groups).map(([name, skills]) => <p key={name}><strong>{name}: </strong>{skills.filter(Boolean).join(', ')}</p>)}</Section>}

@@ -9,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
 
 const sidebarItems = [
+  { path: "/admin/reports", name: "Reports & account reviews", icon: FaTachometerAlt },
   {
     path: "/admin/dashboard",
     name: "Dashboard",
