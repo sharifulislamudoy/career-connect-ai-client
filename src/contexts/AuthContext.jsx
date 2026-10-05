@@ -1,5 +1,11 @@
 import { apiFetch, clearDeviceSession } from "../lib/api";
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import {
   getAuth,
   signInWithPopup,
@@ -31,7 +37,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accountBanned, setAccountBanned] = useState(false);
-  useEffect(() => { const listener=()=>setAccountBanned(true); window.addEventListener("career-account-banned",listener); return()=>window.removeEventListener("career-account-banned",listener); },[]);
+  useEffect(() => {
+    const listener = () => setAccountBanned(true);
+    window.addEventListener("career-account-banned", listener);
+    return () => window.removeEventListener("career-account-banned", listener);
+  }, []);
   const authVersion = useRef(0);
   const registrationData = useRef(null);
 
@@ -74,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (!response.ok || data?.success === false) {
-      throw new Error(data?.message || fallbackMessage);
+      throw new Error(data?.error || data?.message || fallbackMessage);
     }
 
     return data;
@@ -85,7 +95,10 @@ export const AuthProvider = ({ children }) => {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       displayName:
-        userData?.fullName || firebaseUser.displayName || userData?.displayName || "",
+        userData?.fullName ||
+        firebaseUser.displayName ||
+        userData?.displayName ||
+        "",
       photoURL: userData?.photoURL || firebaseUser.photoURL || "",
       location: userData?.location || "",
       profession: userData?.profession || "",
@@ -108,12 +121,12 @@ export const AuthProvider = ({ children }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(userData),
-        }
+        },
       );
 
       const result = await parseApiResponse(
         response,
-        "Failed to save user to database"
+        "Failed to save user to database",
       );
 
       return result.user;
@@ -123,10 +136,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const getUserFromBackend = async (uid) => {
+  const getUserFromBackend = async (uid, billingSnapshot = null) => {
     try {
       const response = await apiFetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/users/${uid}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/users/${uid}`,
       );
 
       if (response.status === 404) {
@@ -135,10 +148,35 @@ export const AuthProvider = ({ children }) => {
 
       const result = await parseApiResponse(
         response,
-        "Failed to fetch user from backend"
+        "Failed to fetch user from backend",
       );
 
-      return result.user || null;
+      const profile = result.user || null;
+      if (profile?.stripeCustomerId) {
+        try {
+          let billing = billingSnapshot;
+          if (!billing) {
+            const response = await apiFetch(
+              `${import.meta.env.VITE_BACKEND_URL}/api/payments/status`,
+            );
+            billing = await parseApiResponse(
+              response,
+              "Failed to refresh billing status",
+            );
+          }
+          return {
+            ...profile,
+            package: billing.plan,
+            packageExpiry: billing.expiresAt,
+            subscriptionStatus: billing.subscriptionStatus,
+            billingCycle: billing.billingCycle,
+            cancelAtPeriodEnd: billing.cancelAtPeriodEnd,
+          };
+        } catch (billingError) {
+          console.warn("Billing status refresh pending:", billingError.message);
+        }
+      }
+      return profile;
     } catch (error) {
       console.error("Error fetching user from backend:", error);
       throw error;
@@ -146,15 +184,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkEmailExists = async (email) => {
-    const cleanEmail = String(email || "").trim().toLowerCase();
+    const cleanEmail = String(email || "")
+      .trim()
+      .toLowerCase();
 
     if (!cleanEmail) return false;
 
     try {
       const response = await apiFetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/check-email?email=${encodeURIComponent(
-          cleanEmail
-        )}`
+          cleanEmail,
+        )}`,
       );
 
       const data = await parseApiResponse(response, "Failed to check email");
@@ -166,14 +206,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const refreshUserProfile = async () => {
-    if (!user) return;
-
+  const refreshUserProfile = async (billingSnapshot = null) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const version = authVersion.current;
     try {
-      const profile = await getUserFromBackend(user.uid);
+      const profile = await getUserFromBackend(
+        currentUser.uid,
+        billingSnapshot,
+      );
 
-      if (profile) {
+      if (
+        profile &&
+        version === authVersion.current &&
+        auth.currentUser?.uid === currentUser.uid
+      ) {
         setUserProfile(profile);
+        return profile;
       }
     } catch (error) {
       console.error("Error refreshing profile:", error);
@@ -190,12 +239,12 @@ export const AuthProvider = ({ children }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, type, userData }),
-        }
+        },
       );
 
       const data = await parseApiResponse(
         response,
-        "Failed to send verification code"
+        "Failed to send verification code",
       );
 
       return data;
@@ -215,7 +264,7 @@ export const AuthProvider = ({ children }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, code, type }),
-        }
+        },
       );
 
       const data = await parseApiResponse(response, "Verification failed");
@@ -237,12 +286,12 @@ export const AuthProvider = ({ children }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, code, type }),
-        }
+        },
       );
 
       const data = await parseApiResponse(
         response,
-        "Failed to consume verification code"
+        "Failed to consume verification code",
       );
 
       return data;
@@ -263,7 +312,7 @@ export const AuthProvider = ({ children }) => {
         userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
-          password
+          password,
         );
       } catch (firebaseError) {
         if (firebaseError.code !== "auth/email-already-in-use") {
@@ -274,21 +323,25 @@ export const AuthProvider = ({ children }) => {
           userCredential = await signInWithEmailAndPassword(
             auth,
             email,
-            password
+            password,
           );
         } catch {
           throw new Error(
-            "This email already exists in Firebase, but the password did not match. Please login with the correct password or reset your Firebase account password."
+            "This email already exists in Firebase, but the password did not match. Please login with the correct password or reset your Firebase account password.",
           );
         }
 
-        const alreadySavedUser = await getUserFromBackend(userCredential.user.uid);
+        const alreadySavedUser = await getUserFromBackend(
+          userCredential.user.uid,
+        );
 
         if (alreadySavedUser) {
           setUser(userCredential.user);
           setUserProfile(alreadySavedUser);
 
-          throw new Error("This email already has an account. Please login instead.");
+          throw new Error(
+            "This email already has an account. Please login instead.",
+          );
         }
       }
 
@@ -323,7 +376,7 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
 
       const firebaseUser = userCredential.user;
@@ -406,7 +459,7 @@ export const AuthProvider = ({ children }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(updateData),
-        }
+        },
       );
 
       const result = await parseApiResponse(response, "Failed to update user");
@@ -432,7 +485,10 @@ export const AuthProvider = ({ children }) => {
         let profile = await getUserFromBackend(currentUser.uid);
 
         if (!profile) {
-          const backendUserData = buildBackendUserData(currentUser, registrationData.current || {});
+          const backendUserData = buildBackendUserData(
+            currentUser,
+            registrationData.current || {},
+          );
           profile = await saveUserToBackend(backendUserData);
         }
 
@@ -476,7 +532,18 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {loading ? <div role="status" className="min-h-screen flex items-center justify-center text-sm text-gray-500">Opening Creative Career AI…</div> : accountBanned && user ? <AccountReview /> : children}
+      {loading ? (
+        <div
+          role="status"
+          className="min-h-screen flex items-center justify-center text-sm text-gray-500"
+        >
+          Opening Creative Career AI…
+        </div>
+      ) : accountBanned && user ? (
+        <AccountReview />
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 import { request, jsonRequest } from "../lib/api";
 import { money } from "../lib/money";
+import { useAuth } from "../contexts/AuthContext";
 const names = {
   documents: "Saved resumes + CVs",
   chat: "AI Coach messages",
@@ -51,6 +52,12 @@ export function UsageTable({ usage }) {
 }
 export default function Payment() {
   const [params] = useSearchParams();
+  const { refreshUserProfile } = useAuth();
+  const profileRefresh = useRef(refreshUserProfile);
+  const refreshing = useRef(false);
+  useEffect(() => {
+    profileRefresh.current = refreshUserProfile;
+  }, [refreshUserProfile]);
   const [plans, setPlans] = useState([]);
   const [usage, setUsage] = useState(null);
   const [history, setHistory] = useState([]);
@@ -58,25 +65,45 @@ export default function Payment() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function refresh() {
+    if (refreshing.current) return;
+    refreshing.current = true;
     try {
-      const [p, u, h] = await Promise.all([
+      // Status first: it repairs missing invoice records before history is read.
+      const u = await request("/api/payments/status");
+      const [p, h] = await Promise.all([
         request("/api/payments/plans"),
-        request("/api/payments/status"),
         request("/api/payments/history"),
       ]);
       setPlans(p.plans);
       setUsage(u);
       setHistory(h.payments);
+      setError("");
+      await profileRefresh.current(u);
     } catch (e) {
       setError(e.message);
+    } finally {
+      refreshing.current = false;
     }
   }
   useEffect(() => {
     refresh();
-    const timer =
-      params.get("checkout") === "success" ? setInterval(refresh, 5000) : null;
-    return () => clearInterval(timer);
+    const returned =
+      params.get("checkout") === "success" ||
+      params.get("billing") === "returned";
+    const timer = returned ? setInterval(refresh, 5000) : null;
+    const stop = timer ? setTimeout(() => clearInterval(timer), 60000) : null;
+    const onFocus = () => {
+      refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(stop);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [params]);
+  const isCurrent = (plan) =>
+    usage?.plan === plan && (plan === "basic" || usage.billingCycle === cycle);
   async function pay(plan) {
     setBusy(true);
     setError("");
@@ -121,10 +148,12 @@ export default function Payment() {
             {error}
           </p>
         )}
-        {params.get("checkout") === "success" && (
+        {(params.get("checkout") === "success" ||
+          params.get("billing") === "returned") && (
           <p className="bg-blue-50 p-4 rounded-xl">
-            Checkout returned successfully. Your plan activates only after
-            Stripe verifies payment. Refreshing your status…
+            {usage?.plan && usage.plan !== "basic"
+              ? `Your ${usage.plan} plan is active. The allowances below show your unlocked features.`
+              : "Verifying your billing status with Stripe. If payment is pending, your current plan stays in place."}
           </p>
         )}
         <div className="flex gap-3">
@@ -186,20 +215,25 @@ export default function Payment() {
               </ul>
               <button
                 disabled={
-                  busy || plan.id === "basic" || usage?.plan === plan.id
+                  busy || !usage || plan.id === "basic" || isCurrent(plan.id)
                 }
                 onClick={() => pay(plan.id)}
                 className="w-full rounded-xl bg-blue-600 text-white mt-6 px-4 py-3 disabled:opacity-40"
               >
-                {usage?.plan === plan.id
+                {isCurrent(plan.id)
                   ? "Current plan"
                   : plan.id === "basic"
                     ? "Always free"
-                    : `Choose ${plan.name}`}
+                    : `${usage?.plan !== "basic" ? "Switch to" : "Choose"} ${plan.name}`}
               </button>
             </section>
           ))}
         </div>
+        <p className="text-sm text-slate-500">
+          Plan changes open Stripe confirmation with the exact prorated amount.
+          Paid features update after payment is verified. Switching the billing
+          cycle is available on the same plan.
+        </p>
         <p className="text-sm text-slate-500">
           Premium has no monthly usage quota for personal use. All plans have
           rate, concurrency, input-size and provider-capacity limits. AI credits
@@ -213,6 +247,13 @@ export default function Payment() {
               <h2 className="text-xl font-bold capitalize">
                 {usage.plan} · usage {usage.period}
               </h2>
+              <button
+                onClick={refresh}
+                disabled={busy}
+                className="text-blue-700 underline"
+              >
+                Refresh billing status
+              </button>
               <button
                 onClick={portal}
                 disabled={busy}
