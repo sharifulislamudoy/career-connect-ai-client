@@ -34,7 +34,7 @@ function renderMessage(text) {
   return parts;
 }
 
-export default function AICoachWidget({ onClose }) {
+export default function AICoachWidget({ onClose, className = "h-[600px] max-h-[80dvh]" }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
@@ -147,8 +147,8 @@ export default function AICoachWidget({ onClose }) {
   };
 
   return (
-    <section className="flex h-[600px] max-h-[80dvh] min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <header className="flex items-center justify-between gap-3 bg-gradient-to-r from-blue-600 to-violet-600 p-4 text-white">
+    <section className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ${className}`}>
+      <header className="flex items-center justify-between gap-3 bg-gradient-to-r from-blue-600 to-blue-800 p-4 text-white">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-white/15 p-3">
             <FaRobot aria-hidden="true" />
@@ -222,7 +222,7 @@ export default function AICoachWidget({ onClose }) {
           placeholder="Ask your career question…"
           maxLength={4000}
           disabled={!user || loading}
-          className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
         <button

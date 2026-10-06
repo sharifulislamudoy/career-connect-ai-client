@@ -1,20 +1,16 @@
 import { createElement } from "react";
-import { useState } from "react";
 import { Link } from "react-router";
 import {
   FaArrowRight,
-  FaRobot,
   FaBriefcase,
   FaFileAlt,
   FaUsers,
-  FaTimes,
 } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import FeedContent from "./FeedContent";
 import AICoachWidget from "./AICoachWidget";
 export default function FeedSection() {
   const { user, userProfile } = useAuth();
-  const [coachOpen, setCoachOpen] = useState(false);
   const name = userProfile?.displayName || user?.displayName || "there";
   const recruiter = userProfile?.userType === "recruiter";
   return (
@@ -108,40 +104,7 @@ export default function FeedSection() {
           <AICoachWidget />
         </aside>
       </div>
-      <button
-        onClick={() => setCoachOpen((v) => !v)}
-        aria-expanded={coachOpen}
-        aria-controls="mobile-career-coach"
-        className="xl:hidden fixed right-4 bottom-20 md:bottom-6 z-40 cc-primary shadow-lg"
-      >
-        <FaRobot />
-        Career coach
-      </button>
-      {coachOpen && (
-        <div
-          className="xl:hidden fixed inset-0 z-[70] bg-gray-950/40 backdrop-blur-sm flex justify-end"
-          onClick={() => setCoachOpen(false)}
-        >
-          <section
-            id="mobile-career-coach"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Career coach"
-            className="w-full sm:max-w-md h-full overflow-y-auto bg-white p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              autoFocus
-              onClick={() => setCoachOpen(false)}
-              className="cc-secondary mb-4"
-            >
-              <FaTimes />
-              Close coach
-            </button>
-            <AICoachWidget onClose={() => setCoachOpen(false)} />
-          </section>
-        </div>
-      )}
+
     </div>
   );
 }

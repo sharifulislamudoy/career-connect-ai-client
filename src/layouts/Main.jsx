@@ -1,3 +1,4 @@
+import DemoAccess from "../components/demo/DemoAccess";
 import { useEffect, Suspense } from "react";
 import { Outlet, useLocation, Link } from "react-router";
 import { MotionConfig } from "framer-motion";
@@ -20,6 +21,7 @@ export default function Main() {
           Skip to content
         </a>
         <Navbar />
+        <div className="cc-container"><DemoAccess /></div>
         {user &&
           userProfile &&
           !userProfile.profileCompleted &&

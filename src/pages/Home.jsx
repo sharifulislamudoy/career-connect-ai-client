@@ -1,3 +1,4 @@
+import MobileCareerCoach from "../components/feed/MobileCareerCoach";
 import HeroSection from "../components/HeroSection";
 import FeedSection from "../components/feed/FeedSection";
 import { useAuth } from "../contexts/AuthContext";
@@ -16,5 +17,10 @@ export default function Home() {
     );
   }
 
-  return user ? <FeedSection /> : <HeroSection />;
+  return (
+    <>
+      {user ? <FeedSection /> : <HeroSection />}
+      <MobileCareerCoach key={user?.uid || "guest"} />
+    </>
+  );
 }

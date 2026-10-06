@@ -1,3 +1,4 @@
+import DemoAccess from "../components/demo/DemoAccess";
 import { Outlet, NavLink, Link, useNavigate } from "react-router";
 import {
   FaUsers,
@@ -119,6 +120,7 @@ export default function AdminLayout() {
 
       <main className="min-w-0 flex-1 p-4 sm:p-6 lg:ml-64 lg:p-8">
         <div className="mx-auto max-w-7xl">
+          <DemoAccess />
           <Outlet />
         </div>
       </main>

@@ -1,6 +1,7 @@
+import DemoAccess from "../demo/DemoAccess";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
   FaGoogle,
   FaEnvelope,
@@ -155,15 +156,15 @@ const Login = () => {
 
   const ErrorMessage = () =>
     error ? (
-      <motion.div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start space-x-3">
+      <Motion.div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start space-x-3">
         <FaExclamationTriangle className="text-red-500 mt-0.5" />
         <p className="text-red-800 text-sm">{error}</p>
-      </motion.div>
+      </Motion.div>
     ) : null;
 
   return (
     <div className="w-full">
-      <motion.div
+      <Motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         className="mb-6"
@@ -174,9 +175,9 @@ const Login = () => {
         >
           <FaArrowLeft className="mr-2" /> Back to Home
         </Link>
-      </motion.div>
+      </Motion.div>
 
-      <motion.div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100/80 p-8">
+      <Motion.div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100/80 p-8">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome Back
@@ -189,11 +190,12 @@ const Login = () => {
           </p>
         </div>
 
+        <DemoAccess />
         <ErrorMessage />
 
         <AnimatePresence mode="wait">
           {step === "credentials" && (
-            <motion.form
+            <Motion.form
               key="login-creds"
               onSubmit={handleSendCode}
               className="space-y-6"
@@ -249,7 +251,7 @@ const Login = () => {
                 </div>
               </div>
 
-              <motion.button
+              <Motion.button
                 whileHover={{ scale: 1.02 }}
                 type="submit"
                 disabled={isLoading}
@@ -260,12 +262,12 @@ const Login = () => {
                 ) : (
                   "Continue"
                 )}
-              </motion.button>
-            </motion.form>
+              </Motion.button>
+            </Motion.form>
           )}
 
           {step === "verification" && (
-            <motion.form
+            <Motion.form
               key="login-verify"
               onSubmit={handleVerifyCode}
               className="space-y-6"
@@ -328,7 +330,7 @@ const Login = () => {
                   Change email or password
                 </button>
               </div>
-            </motion.form>
+            </Motion.form>
           )}
         </AnimatePresence>
 
@@ -366,7 +368,7 @@ const Login = () => {
             </Link>
           </p>
         </div>
-      </motion.div>
+      </Motion.div>
     </div>
   );
 };

@@ -1,12 +1,11 @@
+import { createPortal } from "react-dom";
 import { apiFetch, API_BASE_URL } from "../../lib/api";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
     FaHeart,
     FaRegHeart,
     FaComment,
-    FaShare,
-    FaEllipsisH,
     FaTimes,
     FaImage,
     FaSmile,
@@ -18,6 +17,69 @@ import {
     FaGlobeAmericas
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+
+// A portal prevents animated page ancestors from changing fixed positioning.
+function FeedModal({ children, onClose, label }) {
+    const overlay = useRef(null);
+    const close = useRef(onClose);
+    useEffect(() => { close.current = onClose; }, [onClose]);
+    useEffect(() => {
+        const previousFocus = document.activeElement;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const focusable = () => [...overlay.current.querySelectorAll(
+            'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]'
+        )].filter(element => element.getClientRects().length);
+        (focusable()[0] || overlay.current).focus();
+        const handleKey = (event) => {
+            if (event.key === 'Escape') { event.preventDefault(); close.current(); }
+            if (event.key !== 'Tab') return;
+            const elements = focusable();
+            if (!elements.length) { event.preventDefault(); return; }
+            const first = elements[0], last = elements[elements.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault(); last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault(); first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKey);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', handleKey);
+            if (previousFocus?.isConnected) previousFocus.focus();
+        };
+    }, []);
+    return createPortal(
+        <div ref={overlay} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}
+            style={{ position: 'fixed', inset: 0, zIndex: 100,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 'max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))',
+                background: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(4px)' }}
+            onClick={event => { if (event.target === event.currentTarget) close.current(); }}>
+            {children}
+        </div>, document.body
+    );
+}
+
+function FeedAvatar({ src, size = 44 }) {
+    return (
+        <span style={{ display: 'block', width: size, height: size,
+            minWidth: size, maxWidth: size, minHeight: size, maxHeight: size,
+            flex: `0 0 ${size}px`, overflow: 'hidden', borderRadius: '50%',
+            border: '1px solid #dbeafe', background: '#eff6ff' }}>
+            <img src={src || '/default-avatar.png'} alt="" width={size} height={size}
+                style={{ display: 'block', width: '100%', height: '100%', maxWidth: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                onError={(event) => {
+                    const image = event.currentTarget;
+                    if (!image.dataset.fallback) {
+                        image.dataset.fallback = 'true';
+                        image.src = '/default-avatar.png';
+                    }
+                }} />
+        </span>
+    );
+}
 
 const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
     const [content, setContent] = useState('');
@@ -69,7 +131,7 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
             setUploading(true);
             const url = await uploadToCloudinary(file);
             setImageUrl(url);
-        } catch (err) {
+        } catch {
             alert('Image upload failed');
         } finally {
             setUploading(false);
@@ -105,7 +167,7 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
             } else {
                 alert(result.message || 'Failed to post');
             }
-        } catch (err) {
+        } catch {
             alert('Something went wrong');
         } finally {
             setActionLoading(false);
@@ -115,18 +177,13 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
     if (!isOpen) return null;
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={onClose}
-        >
-            <motion.div
+        <FeedModal onClose={onClose} label="Create post">
+            <Motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                style={{ width: "100%", maxWidth: 672, maxHeight: "90dvh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}
+                className="bg-white rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -139,14 +196,9 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
 
                 {/* User Info */}
                 <div className="p-6 border-b border-gray-200">
-                    <div className="flex items-center space-x-3">
-                        <div className="relative">
-                            <img
-                                src={userProfile?.photoURL || user?.photoURL || '/default-avatar.png'}
-                                alt="Profile"
-                                className="w-12 h-12 rounded-full object-cover border-2 border-blue-500/20"
-                                onError={(e) => e.target.src = '/default-avatar.png'}
-                            />
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="relative shrink-0">
+                            <FeedAvatar src={userProfile?.photoURL ?? user?.photoURL ?? '/default-avatar.png'} size={44} />
                             <div className="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white rounded-full p-1">
                                 <FaGlobeAmericas className="text-white text-xs" />
                             </div>
@@ -163,7 +215,7 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }} className="flex-1 overflow-y-auto p-6">
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
@@ -195,10 +247,10 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-gray-200 space-y-4">
+                <div className="shrink-0 p-4 sm:p-6 border-t border-gray-200 space-y-4">
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">Add to your post</span>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex min-w-0 items-center gap-3">
                             <label className="cursor-pointer flex items-center space-x-2 text-green-600 hover:text-green-700 p-2 rounded-lg hover:bg-green-50">
                                 <FaImage className="text-lg" />
                                 <span className="text-sm font-medium">Photo</span>
@@ -226,8 +278,8 @@ const CreatePostModal = React.memo(({ isOpen, onClose, onSuccess }) => {
                         )}
                     </button>
                 </div>
-            </motion.div>
-        </motion.div>
+            </Motion.div>
+        </FeedModal>
     );
 });
 
@@ -243,9 +295,9 @@ const FeedContent = () => {
     const { user, userProfile } = useAuth();
 
     // UPDATED: fetchPosts with userId query parameter
-    const fetchPosts = useCallback(async (signal) => {
+    const fetchPosts = useCallback(async (signal, background = false) => {
         try {
-            setLoading(true);
+            if (!background) setLoading(true);
             let url = `${API_BASE_URL}/api/posts`;
             if (user) {
                 url += `?userId=${user.uid}`;
@@ -254,18 +306,35 @@ const FeedContent = () => {
             const res = await apiFetch(url, { signal });
             const result = await res.json();
             if (!res.ok || !result.success) throw new Error(result.message || "Failed to load posts");
-            setPosts(result.posts || []);
+            if (signal?.aborted) return;
+            const nextPosts = result.posts || [];
+            setPosts(nextPosts);
+            setSelectedPost(previous => previous ? nextPosts.find(post => post._id === previous._id) || null : null);
         } catch (err) {
             if (err.name !== 'AbortError') setError(err.message || 'Failed to load posts');
         } finally {
             if (!signal?.aborted) setLoading(false);
         }
-    }, [user?.uid]);
+    }, [user]);
 
     useEffect(() => {
         const controller = new AbortController();
         fetchPosts(controller.signal);
         return () => controller.abort();
+    }, [fetchPosts]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const refresh = () => {
+            if (document.visibilityState === 'visible') fetchPosts(controller.signal, true);
+        };
+        window.addEventListener('focus', refresh);
+        document.addEventListener('visibilitychange', refresh);
+        return () => {
+            controller.abort();
+            window.removeEventListener('focus', refresh);
+            document.removeEventListener('visibilitychange', refresh);
+        };
     }, [fetchPosts]);
 
     const handleLike = async (postId) => {
@@ -335,6 +404,10 @@ const FeedContent = () => {
         }
     };
 
+    const authorProfile = (entry) => entry.userId === user?.uid && userProfile
+        ? { displayName: userProfile.displayName || 'Member', photoURL: userProfile.photoURL ?? '', profession: userProfile.profession || '' }
+        : entry.userProfile || {};
+
     const isLiked = (post) => post.likes?.some(l => l.userId === user?.uid);
     const getLikesCount = (post) => post.likes?.length || 0;
     const getCommentsCount = (post) => post.comments?.length || 0;
@@ -352,7 +425,7 @@ const FeedContent = () => {
     };
 
     const renderPost = (post) => (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             key={post._id}
@@ -360,22 +433,17 @@ const FeedContent = () => {
         >
             <div className="p-6 pb-4">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <div className="relative">
-                            <img
-                                src={post.userProfile?.photoURL || '/default-avatar.png'}
-                                alt="Profile"
-                                className="w-12 h-12 rounded-full object-cover border-2 border-blue-500/20"
-                                onError={(e) => e.target.src = '/default-avatar.png'}
-                            />
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="relative shrink-0">
+                            <FeedAvatar src={authorProfile(post).photoURL || '/default-avatar.png'} size={44} />
                             <div className="absolute -bottom-1 -right-1 bg-blue-500 border-2 border-white rounded-full p-1">
                                 <FaUser className="text-white text-xs" />
                             </div>
                         </div>
                         <div>
-                            <p className="font-semibold text-gray-900">{post.userProfile?.displayName || 'User'}</p>
+                            <p className="font-semibold text-gray-900">{authorProfile(post).displayName || 'User'}</p>
                             <p className="text-sm text-gray-500">
-                                {post.userProfile?.profession || 'Professional'} • {formatDate(post.createdAt)}
+                                {authorProfile(post).profession || 'Professional'} • {formatDate(post.createdAt)}
                             </p>
                         </div>
                     </div>
@@ -404,7 +472,7 @@ const FeedContent = () => {
 
             <div className="px-6 py-3 border-t border-gray-200 bg-gray-50/50">
                 <div className="flex items-center justify-between text-sm text-gray-600">
-                    <div className="flex items-center space-x-4">
+                    <div style={{ display: "grid", gridTemplateColumns: "44px minmax(0, 1fr)", alignItems: "center", gap: 12 }}>
                         <span className="flex items-center space-x-1">
                             <FaHeart className="text-red-500" />
                             <span>{getLikesCount(post)}</span>
@@ -432,7 +500,7 @@ const FeedContent = () => {
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </Motion.div>
     );
 
     return (
@@ -441,7 +509,7 @@ const FeedContent = () => {
 
                 {error && (
                     <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex min-w-0 items-center gap-3">
                             <FaExclamationCircle className="text-red-500" />
                             <p className="text-red-800 text-sm">{error}</p>
                         </div>
@@ -450,17 +518,13 @@ const FeedContent = () => {
                 )}
 
                 {/* Create Post Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 mb-6">
-                    <div className="flex items-center space-x-4">
-                        <img
-                            src={userProfile?.photoURL || user?.photoURL || '/default-avatar.png'}
-                            alt="Profile"
-                            className="w-14 h-14 rounded-full object-cover border-2 border-blue-500/20"
-                            onError={(e) => e.target.src = '/default-avatar.png'}
-                        />
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-5 mb-5">
+                    <div style={{ display: "grid", gridTemplateColumns: "44px minmax(0, 1fr)", alignItems: "center", gap: 12 }}>
+                        <FeedAvatar src={userProfile?.photoURL ?? user?.photoURL ?? '/default-avatar.png'} size={44} />
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="flex-1 text-sm text-left px-6 py-4 bg-gray-100 hover:bg-gray-200 rounded-2xl text-gray-500 font-medium"
+                            style={{ minWidth: 0, width: "100%", overflowWrap: "anywhere" }}
+                            className="text-sm text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 font-medium"
                         >
                             What's on your mind?
                         </button>
@@ -511,33 +575,28 @@ const FeedContent = () => {
 
                 <AnimatePresence>
                     {selectedPost && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-                            onClick={() => setSelectedPost(null)}
-                        >
-                            <motion.div
+                        <FeedModal onClose={() => setSelectedPost(null)} label="Post comments">
+                            <Motion.div
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.9 }}
-                                className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                                style={{ width: "100%", maxWidth: 672, maxHeight: "90dvh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}
+                className="bg-white rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col"
                                 onClick={e => e.stopPropagation()}
                             >
                                 <div className="flex items-center justify-between p-6 border-b">
                                     <h3 className="text-xl font-bold">Comments</h3>
                                     <button onClick={() => setSelectedPost(null)}><FaTimes /></button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                <div style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }} className="flex-1 overflow-y-auto p-6 space-y-4">
                                     {getCommentsCount(selectedPost) === 0 ? (
                                         <p className="text-center text-gray-500 py-10">No comments yet</p>
                                     ) : (
                                         selectedPost.comments.map(c => (
                                             <div key={c._id} className="flex space-x-3">
-                                                <img src={c.userProfile?.photoURL || '/default-avatar.png'} alt="" className="w-10 h-10 rounded-full" />
+                                                <FeedAvatar src={authorProfile(c).photoURL} size={36} />
                                                 <div className="bg-gray-100 rounded-2xl px-4 py-3 flex-1">
-                                                    <p className="font-semibold text-sm">{c.userProfile?.displayName}</p>
+                                                    <p className="font-semibold text-sm">{authorProfile(c).displayName}</p>
                                                     <p className="text-sm text-gray-700">{c.content}</p>
                                                 </div>
                                             </div>
@@ -546,7 +605,7 @@ const FeedContent = () => {
                                 </div>
                                 <div className="p-6 border-t bg-gray-50">
                                     <div className="flex space-x-3">
-                                        <img src={userProfile?.photoURL || user?.photoURL || '/default-avatar.png'} alt="" className="w-10 h-10 rounded-full" />
+                                        <FeedAvatar src={userProfile?.photoURL ?? user?.photoURL} size={36} />
                                         <input
                                             type="text"
                                             value={commentText}
@@ -564,8 +623,8 @@ const FeedContent = () => {
                                         </button>
                                     </div>
                                 </div>
-                            </motion.div>
-                        </motion.div>
+                            </Motion.div>
+                        </FeedModal>
                     )}
                 </AnimatePresence>
             </div>
