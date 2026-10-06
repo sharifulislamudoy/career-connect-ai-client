@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { createElement, lazy } from "react";
 const NotificationsPage = lazy(() => import("../pages/NotificationsPage"));
 import { createBrowserRouter } from "react-router";
 import { Navigate } from "react-router";
@@ -7,17 +7,19 @@ import Home from "../pages/Home";
 const Login = lazy(() => import("../components/auth/Login"));
 const SignUp = lazy(() => import("../components/auth/Signup"));
 import Auth from "../layouts/Auth";
-const CareerTools = lazy(() => import('../pages/CareerTools'));
-const CareerWorkspace = lazy(() => import('../pages/CareerWorkspace'));
-const CareerAlerts = lazy(() => import('../pages/CareerAlerts'));
-const CareerProgress = lazy(() => import('../pages/CareerProgress'));
-const AccountReview = lazy(() => import('../pages/AccountReview'));
-const AdminReports = lazy(() => import('../pages/AdminReports'));
+const CareerTools = lazy(() => import("../pages/CareerTools"));
+const CareerWorkspace = lazy(() => import("../pages/CareerWorkspace"));
+const CareerAlerts = lazy(() => import("../pages/CareerAlerts"));
+const CareerProgress = lazy(() => import("../pages/CareerProgress"));
+const AccountReview = lazy(() => import("../pages/AccountReview"));
+const AdminReports = lazy(() => import("../pages/AdminReports"));
 const Payment = lazy(() => import("../pages/Payment"));
 const ATSScoreCheck = lazy(() => import("../pages/ATSScoreCheck"));
 const Settings = lazy(() => import("../pages/Settings"));
 const MockInterview = lazy(() => import("../pages/MockInterview"));
-const LearningPathGenerator = lazy(() => import("../pages/LearningPathGenerator"));
+const LearningPathGenerator = lazy(
+  () => import("../pages/LearningPathGenerator"),
+);
 const Jobs = lazy(() => import("../pages/Jobs"));
 const JobDetail = lazy(() => import("../pages/JobDetail"));
 const PostJob = lazy(() => import("../pages/PostJob"));
@@ -35,6 +37,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 const AdminLayout = lazy(() => import("../layouts/AdminLayout"));
 const AdminUsers = lazy(() => import("../pages/AdminUsers"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
+const AdminPosts = lazy(() => import("../pages/AdminPosts"));
 const AdminJobs = lazy(() => import("../pages/AdminJobs")); // new
 import ModeratorRoute from "../components/ModeratorRoute";
 
@@ -43,8 +46,25 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Main,
     children: [
-      ...[["/career",CareerTools],["/career/tools/:tool",CareerTools],["/career/workspace",CareerWorkspace],["/career/alerts",CareerAlerts],["/career/progress",CareerProgress],["/account-review",AccountReview]].map(([path,Component]) => ({path,element:<ProtectedRoute><Component /></ProtectedRoute>})),
-      { path: "/notifications", element: <ProtectedRoute><NotificationsPage /></ProtectedRoute> },
+      ...[
+        ["/career", CareerTools],
+        ["/career/tools/:tool", CareerTools],
+        ["/career/workspace", CareerWorkspace],
+        ["/career/alerts", CareerAlerts],
+        ["/career/progress", CareerProgress],
+        ["/account-review", AccountReview],
+      ].map(([path, Component]) => ({
+        path,
+        element: <ProtectedRoute>{createElement(Component)}</ProtectedRoute>,
+      })),
+      {
+        path: "/notifications",
+        element: (
+          <ProtectedRoute>
+            <NotificationsPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         index: true,
         Component: Home,
@@ -169,7 +189,14 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: "/create-cv", element: <ProtectedRoute><CVBuilder /></ProtectedRoute> },
+      {
+        path: "/create-cv",
+        element: (
+          <ProtectedRoute>
+            <CVBuilder />
+          </ProtectedRoute>
+        ),
+      },
       { path: "/cv", element: <Navigate to="/create-cv" replace /> },
       {
         path: "/create-resume",
@@ -208,6 +235,7 @@ export const router = createBrowserRouter([
         element: <Navigate to="/admin/dashboard" replace />,
       },
       { path: "reports", element: <AdminReports /> },
+      { path: "posts", element: <AdminPosts /> },
       {
         path: "dashboard",
         element: <AdminDashboard />,

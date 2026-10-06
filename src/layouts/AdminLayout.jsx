@@ -5,12 +5,23 @@ import {
   FaSignOutAlt,
   FaTachometerAlt,
   FaBriefcase,
+  FaRegFileAlt,
 } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
 
 const sidebarItems = [
-  { path: "/admin/reports", name: "Reports & account reviews", icon: FaTachometerAlt },
+  {
+    path: "/admin/posts",
+    name: "Community posts",
+    icon: FaRegFileAlt,
+    adminOnly: true,
+  },
+  {
+    path: "/admin/reports",
+    name: "Reports & account reviews",
+    icon: FaTachometerAlt,
+  },
   {
     path: "/admin/dashboard",
     name: "Dashboard",
@@ -53,12 +64,8 @@ export default function AdminLayout() {
             />
 
             <div>
-              <p className="text-lg font-bold text-blue-600">
-                Career AI
-              </p>
-              <p className="text-xs text-gray-500">
-                Admin workspace
-              </p>
+              <p className="text-lg font-bold text-blue-600">Career AI</p>
+              <p className="text-xs text-gray-500">Admin workspace</p>
             </div>
           </Link>
 
@@ -87,22 +94,26 @@ export default function AdminLayout() {
             aria-label="Admin navigation"
             className="flex flex-wrap gap-2 lg:flex-col"
           >
-            {sidebarItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`
-                }
-              >
-                <item.icon aria-hidden="true" />
-                <span>{item.name}</span>
-              </NavLink>
-            ))}
+            {sidebarItems
+              .filter(
+                (item) => !item.adminOnly || userProfile?.userType === "admin",
+              )
+              .map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`
+                  }
+                >
+                  <item.icon aria-hidden="true" />
+                  <span>{item.name}</span>
+                </NavLink>
+              ))}
           </nav>
 
           <div className="mt-6 border-t border-gray-100 pt-4">
